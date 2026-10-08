@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CloudRain, Droplets, FlaskConical, Sparkles, X } from "lucide-react";
 import { Button } from "./button";
+import { drawerPanel, fadeUp, staggerContainer } from "@/lib/motion";
 
 /**
  * Structured "Why this decision?" drawer. It presents the decision chain —
@@ -35,10 +36,10 @@ export function WhyDrawer({ open, onClose }: { open: boolean; onClose: () => voi
           />
           <motion.aside
             className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-line bg-surface shadow-pop"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            variants={drawerPanel}
             role="dialog"
             aria-label="Why this decision"
           >
@@ -55,15 +56,20 @@ export function WhyDrawer({ open, onClose }: { open: boolean; onClose: () => voi
               <button
                 onClick={onClose}
                 aria-label="Close explanation"
-                className="rounded-lg p-1.5 text-ink-faint hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                className="rounded-lg p-1.5 text-ink-faint transition-colors duration-150 hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5">
-              {/* Decision chain */}
-              <ol className="relative space-y-6 border-l border-line pl-6">
+              {/* Decision chain — steps reveal in sequence when the drawer opens */}
+              <motion.ol
+                className="relative space-y-6 border-l border-line pl-6"
+                variants={staggerContainer(0.08, 0.12)}
+                initial="hidden"
+                animate="show"
+              >
                 <Step
                   icon={<Droplets size={13} />}
                   label="Current condition"
@@ -83,7 +89,7 @@ export function WhyDrawer({ open, onClose }: { open: boolean; onClose: () => voi
                   detail="Simulating wait-6h against irrigate-now shows lower water use with stress staying at 5.2% — under the 15% threshold."
                   highlight
                 />
-              </ol>
+              </motion.ol>
 
               {/* Plain language */}
               <div className="mt-6 rounded-xl2 border border-line bg-brand-light p-4">
@@ -127,7 +133,10 @@ function Step({
   highlight?: boolean;
 }) {
   return (
-    <li className="relative">
+    <motion.li
+      className="relative"
+      variants={fadeUp}
+    >
       <span
         className={`absolute -left-[31px] flex h-6 w-6 items-center justify-center rounded-full border ${
           highlight ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink-faint"
@@ -138,6 +147,6 @@ function Step({
       <div className="text-micro font-medium uppercase tracking-wide text-ink-faint">{label}</div>
       <div className={`mt-0.5 text-sm font-semibold ${highlight ? "text-brand-dark" : "text-ink"}`}>{value}</div>
       <p className="mt-1 text-tiny leading-relaxed text-ink-muted">{detail}</p>
-    </li>
+    </motion.li>
   );
 }

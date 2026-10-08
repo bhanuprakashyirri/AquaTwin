@@ -48,6 +48,7 @@ export function FarmMap({
   const mapRef = useRef<MlMap | null>(null);
   const [ready, setReady] = useState(false);
   const [hover, setHover] = useState<{ x: number; y: number; z: Zone } | null>(null);
+  const [sensorHover, setSensorHover] = useState<{ x: number; y: number; kind: string; value: number } | null>(null);
   const zonesRef = useRef(zones);
   const onZoneSelectRef = useRef(onZoneSelect);
   const interactRef = useRef(false);
@@ -172,14 +173,22 @@ export function FarmMap({
     }
 
     if (zoneFc.features.length > 0 && !map.getSource("zones")) {
-      map.addSource("zones", { type: "geojson", data: zoneFc });
+      map.addSource("zones", { type: "geojson", data: zoneFc, promoteId: "id" });
       map.addLayer({
         id: "zone-fill",
         type: "fill",
         source: "zones",
         paint: {
           "fill-color": ["get", "color"],
-          "fill-opacity": ["case", ["==", ["get", "dimmed"], true], 0.45, ["==", ["get", "selected"], true], 0.92, 0.8],
+          // REST → HOVER → SELECTED → DIMMED, all expressed in paint so MapLibre
+          // transitions them smoothly instead of React re-rendering the map.
+          "fill-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false], 0.95,
+            ["==", ["get", "dimmed"], true], 0.4,
+            ["==", ["get", "selected"], true], 0.92,
+            0.78,
+          ],
         },
       });
       map.addLayer({
@@ -187,26 +196,44 @@ export function FarmMap({
         type: "line",
         source: "zones",
         paint: {
-          "line-color": ["case", ["==", ["get", "selected"], true], "#1D493D", "#FFFFFF"],
-          "line-width": ["case", ["==", ["get", "selected"], true], 2.5, 1.5],
+          "line-color": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false], "#2F6B58",
+            ["==", ["get", "selected"], true], "#1D493D",
+            "#FFFFFF",
+          ],
+          "line-width": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false], 2.25,
+            ["==", ["get", "selected"], true], 2.5,
+            1.5,
+          ],
         },
       });
+      // Smooth paint transitions — layer switches and selection changes glide
+      // instead of snapping (professional GIS feel).
+      map.setPaintProperty("zone-fill", "fill-color-transition", { duration: 280, delay: 0 });
+      map.setPaintProperty("zone-fill", "fill-opacity-transition", { duration: 200, delay: 0 });
+      map.setPaintProperty("zone-line", "line-color-transition", { duration: 200, delay: 0 });
+      map.setPaintProperty("zone-line", "line-width-transition", { duration: 200, delay: 0 });
     }
 
     if (sensorFc.features.length > 0 && !map.getSource("sensors")) {
-      map.addSource("sensors", { type: "geojson", data: sensorFc });
+      map.addSource("sensors", { type: "geojson", data: sensorFc, promoteId: "id" });
       map.addLayer({
         id: "sensor-halo",
         type: "circle",
         source: "sensors",
-        paint: { "circle-radius": 7, "circle-color": "#FFFFFF", "circle-opacity": 0.9 },
+        paint: { "circle-radius": ["case", ["boolean", ["feature-state", "hover"], false], 9, 7], "circle-color": "#FFFFFF", "circle-opacity": 0.9 },
       });
       map.addLayer({
         id: "sensor-dot",
         type: "circle",
         source: "sensors",
-        paint: { "circle-radius": 3.5, "circle-color": "#4D7EA8" },
+        paint: { "circle-radius": ["case", ["boolean", ["feature-state", "hover"], false], 4.5, 3.5], "circle-color": "#4D7EA8" },
       });
+      map.setPaintProperty("sensor-halo", "circle-radius-transition", { duration: 150, delay: 0 });
+      map.setPaintProperty("sensor-dot", "circle-radius-transition", { duration: 150, delay: 0 });
     }
 
     if (zoneFc.features.length > 0 && !map.getLayer("zone-labels")) {
@@ -254,19 +281,73 @@ export function FarmMap({
     // interactions — registered once, reading latest data via refs
     if (!interactRef.current && map.getLayer("zone-fill")) {
       interactRef.current = true;
+      let hoveredId: string | number | null = null;
+      let hoveredSensorId: string | number | null = null;
+      const setHoverState = (id: string | number | null) => {
+        if (hoveredId !== null && id !== hoveredId) {
+          try {
+            map.setFeatureState({ source: "zones", id: hoveredId }, { hover: false });
+          } catch {
+            /* feature may have been removed by a layer switch */
+          }
+        }
+        if (id !== null) {
+          try {
+            map.setFeatureState({ source: "zones", id }, { hover: true });
+          } catch {
+            /* ignore */
+          }
+        }
+        hoveredId = id;
+      };
       map.on("mousemove", "zone-fill", (e) => {
         map.getCanvas().style.cursor = "pointer";
         const f = e.features?.[0] as MapGeoJSONFeature | undefined;
         const z = zonesRef.current.find((zz) => zz.id === f?.properties?.id);
-        if (z && e.point) setHover({ x: e.point.x, y: e.point.y, z });
+        if (z && e.point) {
+          setHoverState(f!.id ?? null);
+          setHover({ x: e.point.x, y: e.point.y, z });
+        }
       });
       map.on("mouseleave", "zone-fill", () => {
         map.getCanvas().style.cursor = "";
+        setHoverState(null);
         setHover(null);
       });
       map.on("click", "zone-fill", (e) => {
         const f = e.features?.[0] as MapGeoJSONFeature | undefined;
         if (f?.properties?.id) onZoneSelectRef.current(f.properties.id as string);
+      });
+
+      // Sensor hover — same tooltip treatment as zones.
+      map.on("mousemove", "sensor-dot", (e) => {
+        map.getCanvas().style.cursor = "pointer";
+        const f = e.features?.[0] as MapGeoJSONFeature | undefined;
+        if (f && e.point) {
+          const sid = f.id ?? null;
+          if (hoveredSensorId !== sid) {
+            if (hoveredSensorId !== null) {
+              try { map.setFeatureState({ source: "sensors", id: hoveredSensorId }, { hover: false }); } catch { /* noop */ }
+            }
+            if (sid !== null) {
+              try { map.setFeatureState({ source: "sensors", id: sid }, { hover: true }); } catch { /* noop */ }
+            }
+            hoveredSensorId = sid;
+          }
+          setSensorHover({
+            x: e.point.x,
+            y: e.point.y,
+            kind: (f.properties?.kind as string) ?? "sensor",
+            value: Number(f.properties?.value ?? 0),
+          });
+        }
+      });
+      map.on("mouseleave", "sensor-dot", () => {
+        if (hoveredSensorId !== null) {
+          try { map.setFeatureState({ source: "sensors", id: hoveredSensorId }, { hover: false }); } catch { /* noop */ }
+          hoveredSensorId = null;
+        }
+        setSensorHover(null);
       });
     }
   }, [ready, zoneFc, sensorFc]);
@@ -364,6 +445,23 @@ export function FarmMap({
               <span className="font-medium text-ink">{v}</span>
             </div>
           ))}
+        </div>
+      ) : null}
+
+      {/* Sensor tooltip */}
+      {sensorHover ? (
+        <div
+          className="pointer-events-none absolute z-20 rounded-lg border border-line bg-white/95 px-3 py-2 text-tiny shadow-pop backdrop-blur"
+          style={{
+            left: Math.min(sensorHover.x + 12, (containerRef.current?.clientWidth ?? 400) - 160),
+            top: sensorHover.y + 12,
+          }}
+        >
+          <div className="font-medium capitalize text-ink">{sensorHover.kind.replace(/_/g, " ")}</div>
+          <div className="text-ink-muted">
+            Reading <span className="font-semibold text-ink">{sensorHover.value.toFixed(1)}</span>
+            {sensorHover.kind.includes("moisture") ? "%" : sensorHover.kind.includes("temp") ? "°C" : ""} · demo
+          </div>
         </div>
       ) : null}
 

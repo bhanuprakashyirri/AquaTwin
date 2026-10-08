@@ -27,6 +27,61 @@ body {
   background: rgba(47, 107, 88, 0.18);
 }
 
+/* ---------- Motion utilities ---------- */
+
+/* Skeleton shimmer — used instead of spinners for content-shaped loading */
+@keyframes aqua-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes aqua-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #edf2ec;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: aqua-shimmer 1.6s infinite;
+}
+
+/* Arrow micro-affordance: pair with "group" on a button/link and put
+   .icon-nudge on the trailing icon so it nudges forward on hover. */
+.icon-nudge {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.group:hover .icon-nudge,
+.group:focus-visible .icon-nudge {
+  transform: translateX(2px);
+}
+
+/* Respect reduced-motion: keep functionality, drop decorative movement.
+   (Framer Motion is separately handled via <MotionConfig reducedMotion="user">.) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

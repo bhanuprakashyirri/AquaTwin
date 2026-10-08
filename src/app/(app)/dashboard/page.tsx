@@ -72,12 +72,53 @@ export default function DashboardPage() {
         actions={<DemoPill />}
       />
 
-      {/* Primary KPIs */}
+      {/* Primary KPIs — each with contextual hover info (interaction depth) */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <KpiCard index={0} label="Soil moisture" value={`${moisture.toFixed(1)}%`} sub="Healthy range" trend={{ direction: "down", text: "2.4% in 6h", good: true }} />
-        <KpiCard index={1} label="Crop stress" value={`${stress}%`} sub={stress < 15 ? "Low risk" : "Elevated"} trend={{ direction: "flat", text: "threshold 15%" }} />
-        <KpiCard index={2} label="Next rain" value={`${rainPct}%`} sub={`Expected in ${rainH}h`} />
-        <KpiCard index={3} label="Water available" value={fmtL(2000)} sub="Tank + canal quota" />
+        <KpiCard
+          index={0}
+          label="Soil moisture"
+          value={`${moisture.toFixed(1)}%`}
+          sub="Healthy range"
+          trend={{ direction: "down", text: "2.4% in 6h", good: true }}
+          info={
+            <>
+              Root-zone average across all four sensors. Within the healthy range — a 2.4% decline over the last 6
+              hours tracks normal crop water use.
+            </>
+          }
+        />
+        <KpiCard
+          index={1}
+          label="Crop stress"
+          value={`${stress}%`}
+          sub={stress < 15 ? "Low risk" : "Elevated"}
+          trend={{ direction: "flat", text: "threshold 15%" }}
+          info={
+            <>
+              Predicted crop-stress risk over the next 48h. Below the configured 15% threshold — Zone B is closest at
+              22%.
+            </>
+          }
+        />
+        <KpiCard
+          index={2}
+          label="Next rain"
+          value={`${rainPct}%`}
+          sub={`Expected in ${rainH}h`}
+          info={
+            <>
+              Probability of the next rainfall event from the 48h forecast — about 12.3 mm expected. The recommender
+              defers irrigation when this is high.
+            </>
+          }
+        />
+        <KpiCard
+          index={3}
+          label="Water available"
+          value={fmtL(2000)}
+          sub="Tank + canal quota"
+          info={<>Total water available for this irrigation window — tank storage plus canal quota. Adjust it in the Water Budget workspace.</>}
+        />
       </div>
 
       {/* Supporting indicators */}
@@ -167,8 +208,8 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-4 flex gap-2">
-                <LinkButton href="/simulator" variant="primary" className="flex-1">
-                  <FlaskConical size={14} /> View simulation
+                <LinkButton href="/simulator" variant="primary" className="group flex-1">
+                  <FlaskConical size={14} /> View simulation <ArrowRight size={14} className="icon-nudge" />
                 </LinkButton>
                 <Button variant="secondary" onClick={() => setDrawerOpen(true)}>
                   Why this decision?

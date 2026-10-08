@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Map as MapIcon,
@@ -32,9 +33,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-line bg-surface">
-      {/* Brand */}
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-light">
+      {/* Brand — logo drop responds to hover, like QuizCore's brand-mark micro */}
+      <div className="group flex cursor-pointer items-center gap-2.5 px-5 py-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-light transition-transform duration-300 ease-out group-hover:-translate-y-0.5">
           <Droplets size={18} className="text-brand" />
         </div>
         <div>
@@ -57,14 +58,26 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+                "group relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
                 active
                   ? "bg-brand-light text-brand-dark"
                   : "text-ink-soft hover:bg-subtle hover:text-ink",
               )}
             >
-              {active ? <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand" /> : null}
-              <Icon size={16} className={active ? "text-brand" : "text-ink-faint"} />
+              {active ? (
+                <motion.span
+                  layoutId="nav-indicator"
+                  transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand"
+                />
+              ) : null}
+              <Icon
+                size={16}
+                className={cn(
+                  "transition-transform duration-200 ease-out group-hover:translate-x-0.5",
+                  active ? "text-brand" : "text-ink-faint",
+                )}
+              />
               {item.label}
             </Link>
           );
@@ -101,7 +114,7 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-ink/30" onClick={onClose} aria-hidden />
-      <div className="absolute left-0 top-0 h-full shadow-pop">
+      <div className="absolute left-0 top-0 h-full shadow-pop" style={{ animation: "aqua-slide-in-left 0.28s cubic-bezier(0.16,1,0.3,1) both" }}>
         <button
           onClick={onClose}
           aria-label="Close navigation"
