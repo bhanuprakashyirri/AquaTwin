@@ -1,29 +1,38 @@
 "use client";
 
 /**
- * Landing sections — the storytelling spine of the site.
- *
- * Every data-driven visual here is a REAL component (MapLibre map,
- * Recharts, animated bars). The SVG scenes are used only for
- * editorial storytelling (problem imagery, CTA backdrop).
+ * Art-directed Landing Sections — The complete 10-phase storytelling experience:
+ * 02 — THE PROBLEM (Visual tension: 1 large photograph + editorial data points)
+ * 03 — THE SHIFT (Interactive 4-step sequence: Current Field -> Twin -> Scenarios -> Decision)
+ * 04 — FIELD DIGITAL TWIN (Full MapLibre GIS workspace with interactive zones & telemetry)
+ * 05 — WHAT-IF SIMULATION (Signature feature: 3 futures with 48h trajectory chart)
+ * 06 — WEATHER UNCERTAINTY ("What if the forecast is wrong?" Rain occurs / partial / fails)
+ * 07 — WATER BUDGET ("Use the water you actually have" Interactive slider 500-3000L)
+ * 08 — FIELD WATER FINGERPRINT ("Every field behaves differently" Predicted vs Observed)
+ * 09 — IMPACT (Verified demo metrics with agricultural photography)
+ * 10 — FINAL CTA ("Make every litre count" Cinematic sunrise backdrop)
+ * LandingFooter (Clean editorial footer)
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { AnimatePresence, animate, motion, useInView } from "framer-motion";
+import Image from "next/image";
+import { AnimatePresence, motion, useInView } from "framer-motion";
 import {
   ArrowRight,
   CheckCircle2,
   CloudRain,
   Droplets,
-  FlaskConical,
   Layers,
-  Map as MapIcon,
-  Gauge,
-  ScanSearch,
+  MapPin,
+  Play,
+  Scale,
+  ShieldCheck,
+  Sparkles,
   Sprout,
-  Target,
+  TrendingDown,
+  TrendingUp,
   Wand2,
 } from "lucide-react";
 import {
@@ -31,13 +40,13 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   XAxis,
   YAxis,
 } from "recharts";
-import Image from "next/image";
 import { LinkButton } from "@/components/ui/button";
-import { DemoPill } from "@/components/ui/panel";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { EASE, fadeUp, riseUp, staggerContainer } from "@/lib/motion";
 import { fmtL } from "@/lib/format";
@@ -46,238 +55,173 @@ import { ZONES } from "@/lib/demo-data";
 const FarmMap = dynamic(() => import("@/components/maps/farm-map").then((m) => ({ default: m.FarmMap })), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center bg-subtle text-tiny text-ink-muted">
-      Loading field map…
+    <div className="flex h-full min-h-[380px] items-center justify-center bg-subtle text-xs text-ink-muted">
+      Loading interactive field GIS engine…
     </div>
   ),
 });
 
-/* ------------------------------------------------------------------ */
-/* Count-up number for staged reveals                                  */
-/* ------------------------------------------------------------------ */
-
-function CountUp({ to, suffix = "", decimals = 0, play }: { to: number; suffix?: string; decimals?: number; play: boolean }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
-  const [val, setVal] = useState(0);
-
-  useEffect(() => {
-    if (!play || !inView) return;
-    const controls = animate(0, to, {
-      duration: 1.1,
-      ease: [0.16, 1, 0.3, 1],
-      onUpdate: (v) => setVal(v),
-    });
-    return () => controls.stop();
-  }, [play, inView, to]);
-
-  return (
-    <span ref={ref}>
-      {val.toFixed(decimals)}
-      {suffix}
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 1. THE PROBLEM                                                    */
-/* ------------------------------------------------------------------ */
-
-const PROBLEMS = [
-  {
-    image: "/images/landing_hero.jpg",
-    alt: "Over-irrigation in rice paddies",
-    k: "Over-irrigation",
-    v: "Water the crop never uses",
-    stat: "up to 35% wasted",
-  },
-  {
-    image: "/images/water_stress.jpg",
-    alt: "Paddy crop experiencing soil moisture stress",
-    k: "Under-irrigation",
-    v: "Zones drift past the refill point",
-    stat: "yield loss compounds",
-  },
-  {
-    image: "/images/field_before_rain.jpg",
-    alt: "Approaching rain clouds over agricultural fields",
-    k: "Uncertain rainfall",
-    v: "Watering hours before rain arrives",
-    stat: "70% rain ignored",
-  },
-  {
-    image: "/images/optimized_irrigation.jpg",
-    alt: "Optimized water flow through paddy channel",
-    k: "The resolution",
-    v: "Optimized irrigation, zone by zone",
-    stat: "453 L saved / event",
-    resolution: true,
-  },
-];
+/* ==================================================================
+   02 — THE PROBLEM: "Every irrigation decision has a cost."
+   One powerful photograph + high visual tension + data points
+   ================================================================== */
 
 export function ProblemSection() {
-  return (
-    <section className="border-y border-line bg-surface">
-      <div className="mx-auto max-w-7xl px-6 py-20">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-80px" }}
-          className="max-w-2xl"
-        >
-          <div className="text-micro font-semibold uppercase tracking-[0.18em] text-brand">
-            The problem
-          </div>
-          <h2 className="mt-3 text-[32px] font-semibold leading-tight tracking-tight text-ink md:text-[40px]">
-            Every irrigation decision has a cost.
-          </h2>
-          <p className="mt-4 leading-relaxed text-ink-muted">
-            Most irrigation still runs on fixed schedules, habit, or guesswork — without weighing
-            soil moisture, crop stage, weather forecasts, satellite-derived signals, past irrigation,
-            and how little water is actually available.
-          </p>
-        </motion.div>
+  const problems = [
+    { title: "Over-irrigation", stat: "Up to 35% water wasted", desc: "Water released before rain arrives or beyond field capacity drains unused." },
+    { title: "Under-irrigation", stat: "Silent yield loss", desc: "Root zones fall below the refill threshold without early warning." },
+    { title: "Uncertain rainfall", stat: "70% rain ignored", desc: "Farmers pump water hours before a downpour because forecasts aren't trusted." },
+    { title: "Limited water", stat: "Canal quota deficits", desc: "Fixed schedules distribute scarce water equally instead of prioritizing high-stress zones." },
+  ];
 
-        <motion.div
-          variants={staggerContainer(0.09)}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {PROBLEMS.map((p) => (
-            <motion.figure
-              key={p.k}
-              variants={fadeUp}
-              className={`group relative overflow-hidden rounded-xl2 border bg-surface shadow-card transition-[box-shadow,transform] duration-300 ease-out hover:-translate-y-1 hover:shadow-raised ${
-                p.resolution ? "border-[#BFDCCB]" : "border-line"
-              }`}
-            >
-              <div className="relative aspect-[5/4] overflow-hidden">
-                <Image
-                  src={p.image}
-                  alt={p.alt}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 25vw"
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/85 via-[#163A31]/25 to-transparent" />
-                <figcaption className="absolute inset-x-0 bottom-0 p-4">
-                  <div className="text-sm font-semibold text-white">{p.k}</div>
-                  <div className="mt-0.5 text-tiny text-white/90">{p.v}</div>
-                </figcaption>
+  return (
+    <section className="border-b border-line bg-surface py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+          {/* Left Column: Editorial Headline & Problem Points (7 cols) */}
+          <motion.div
+            variants={staggerContainer(0.08, 0.05)}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-80px" }}
+            className="lg:col-span-7"
+          >
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+              The Reality of Irrigation
+            </div>
+            <h2 className="mt-3 text-[32px] font-extrabold leading-[1.12] tracking-[-0.025em] text-ink sm:text-[42px] lg:text-[48px]">
+              Every irrigation decision <br className="hidden sm:inline" />
+              has a compounding cost.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-muted">
+              Most irrigation still operates on fixed calendar schedules, habit, or instinct — without
+              testing how soil physics, approaching weather, and crop evapotranspiration will interact over
+              the next 48 hours.
+            </p>
+
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {problems.map((p, i) => (
+                <div key={p.title} className="rounded-xl2 border border-line bg-page p-5 transition-shadow hover:shadow-card">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-ink-faint">
+                      Issue 0{i + 1}
+                    </span>
+                    <span className="text-xs font-bold text-danger">{p.stat}</span>
+                  </div>
+                  <h3 className="mt-2 text-base font-bold text-ink">{p.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">{p.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Right Column: Single Powerful Photograph (5 cols) */}
+          <motion.div
+            variants={riseUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-60px" }}
+            className="lg:col-span-5"
+          >
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-line shadow-raised">
+              <Image
+                src="/images/water_stress.jpg"
+                alt="Paddy crops showing soil moisture stress in dry irrigation channels"
+                fill
+                sizes="(max-width: 1024px) 100vw, 40vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-x-6 bottom-6 rounded-xl border border-white/20 bg-black/40 p-4 text-white backdrop-blur-md">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-white/70">Field Diagnosis</div>
+                <div className="mt-1 text-sm font-semibold">Zone B: Soil moisture dropped below 22% refill point</div>
+                <div className="mt-1 text-xs text-white/80">Early root-zone deficit begins days before visible crop wilt.</div>
               </div>
-              <div className="flex items-center justify-between border-t border-line px-4 py-3">
-                <span className="text-micro text-ink-faint">Impact</span>
-                <span className={`text-tiny font-semibold ${p.resolution ? "text-brand-dark" : "text-warning"}`}>
-                  {p.stat}
-                </span>
-              </div>
-            </motion.figure>
-          ))}
-        </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* 2. THE DIFFERENCE — "Don't just predict. Simulate."               */
-/* ------------------------------------------------------------------ */
+/* ==================================================================
+   03 — THE SHIFT: "What if you could test before making it?"
+   Interactive 4-step sequence: Current Field -> Twin -> Scenarios -> Decision
+   ================================================================== */
 
-const WORKFLOW = [
-  { icon: ScanSearch, step: "Current field state", desc: "Live moisture, stress and water balance from the digital twin." },
-  { icon: FlaskConical, step: "Simulate futures", desc: "Project soil moisture 48h ahead for every irrigation choice." },
-  { icon: Layers, step: "Compare outcomes", desc: "Water use, stress risk and waste side by side." },
-  { icon: Gauge, step: "Optimize water", desc: "Allocate every litre where it reduces stress the most." },
-  { icon: Target, step: "Recommend action", desc: "One clear decision — with the full reasoning attached." },
-];
-
-export function DifferenceSection() {
-  const lineRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(lineRef, { once: true, margin: "-100px" });
+export function ShiftSection() {
+  const steps = [
+    {
+      num: "01",
+      title: "Current Field State",
+      subtitle: "Telemetry Ingestion",
+      desc: "Live soil sensors, satellite canopy signals, and local 48h weather radar are ingested into memory.",
+    },
+    {
+      num: "02",
+      title: "Digital Twin Synthesis",
+      subtitle: "Mass-Balance Physics",
+      desc: "Root-zone water dynamics, infiltration curves, and evapotranspiration are simulated zone-by-zone.",
+    },
+    {
+      num: "03",
+      title: "Future Scenarios",
+      subtitle: "What-If Projections",
+      desc: "Multiple options (irrigate now, wait 6h, wait 24h, partial) are simulated forward 48 hours in parallel.",
+    },
+    {
+      num: "04",
+      title: "Optimal Decision",
+      subtitle: "Constrained Action",
+      desc: "Water is allocated only where predicted stress reduction is maximized, backed by an auditable reason.",
+    },
+  ];
 
   return (
-    <section id="how" className="scroll-mt-16">
-      <div className="mx-auto max-w-7xl px-6 py-20">
+    <section id="shift" className="scroll-mt-16 border-b border-line bg-page py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
         <motion.div
           variants={fadeUp}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, margin: "-80px" }}
-          className="max-w-2xl"
+          viewport={{ once: true, margin: "-60px" }}
+          className="mx-auto max-w-3xl text-center"
         >
-          <div className="text-micro font-semibold uppercase tracking-[0.18em] text-brand">
-            The difference
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+            The Paradigm Shift
           </div>
-          <h2 className="mt-3 text-[32px] font-semibold leading-tight tracking-tight text-ink md:text-[40px]">
-            Don&apos;t just predict. <span className="text-brand">Simulate.</span>
+          <h2 className="mt-3 text-[34px] font-extrabold leading-[1.1] tracking-[-0.025em] text-ink sm:text-[44px]">
+            What if you could test an irrigation decision{" "}
+            <span className="text-brand">before making it?</span>
           </h2>
-          <p className="mt-4 leading-relaxed text-ink-muted">
-            A prediction tells you what might happen. A simulation lets you test every decision
-            against the field&apos;s own physics — before a single valve opens.
+          <p className="mt-4 text-base leading-relaxed text-ink-muted">
+            Instead of reactive guesswork, AquaTwin runs a digital twin simulation for every possible
+            action — choosing the one that preserves crop yield while saving the most water.
           </p>
         </motion.div>
 
-        {/* animated connector line */}
-        <div ref={lineRef} className="relative mt-14 hidden lg:block">
-          <div className="absolute left-0 right-0 top-[26px] h-px bg-line" />
-          <motion.div
-            className="absolute left-0 top-[26px] h-px bg-brand"
-            initial={{ width: "0%" }}
-            animate={inView ? { width: "100%" } : {}}
-            transition={{ duration: 1.6, ease: EASE, delay: 0.3 }}
-          />
-          <div className="grid grid-cols-5 gap-4">
-            {WORKFLOW.map((w, i) => (
-              <motion.div
-                key={w.step}
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ delay: 0.15 + i * 0.14 }}
-                className="group relative"
-              >
-                <div className="relative z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full border border-line bg-surface shadow-card transition-[border-color,box-shadow,transform] duration-300 ease-out group-hover:-translate-y-1 group-hover:border-brand group-hover:shadow-raised">
-                  <w.icon size={20} className="text-brand" />
-                </div>
-                <div className="mt-4 text-micro font-semibold uppercase tracking-[0.14em] text-brand">
-                  Step {String(i + 1).padStart(2, "0")}
-                </div>
-                <div className="mt-1 text-[15px] font-semibold text-ink">{w.step}</div>
-                <p className="mt-1.5 text-tiny leading-relaxed text-ink-muted">{w.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* mobile / tablet: vertical timeline */}
-        <div className="mt-10 space-y-0 lg:hidden">
-          {WORKFLOW.map((w, i) => (
+        {/* The 4-step horizontal process sequence */}
+        <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((s, i) => (
             <motion.div
-              key={w.step}
+              key={s.num}
               variants={fadeUp}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ delay: i * 0.08 }}
-              className="relative flex gap-4 pb-8 last:pb-0"
+              transition={{ delay: i * 0.12 }}
+              className="relative rounded-2xl border border-line bg-surface p-6 shadow-card transition-all hover:-translate-y-1 hover:shadow-raised"
             >
-              {i < WORKFLOW.length - 1 && (
-                <span className="absolute left-[25px] top-[52px] h-[calc(100%-52px)] w-px bg-line" />
-              )}
-              <div className="relative z-10 flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border border-line bg-surface shadow-card">
-                <w.icon size={20} className="text-brand" />
+              <div className="flex items-center justify-between border-b border-line pb-4">
+                <span className="text-2xl font-extrabold text-brand-dark">{s.num}</span>
+                <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-[10px] font-bold text-brand uppercase tracking-wider">
+                  Phase {i + 1}
+                </span>
               </div>
-              <div>
-                <div className="text-micro font-semibold uppercase tracking-[0.14em] text-brand">
-                  Step {String(i + 1).padStart(2, "0")}
-                </div>
-                <div className="mt-0.5 text-[15px] font-semibold text-ink">{w.step}</div>
-                <p className="mt-1 text-tiny leading-relaxed text-ink-muted">{w.desc}</p>
-              </div>
+              <h3 className="mt-4 text-base font-bold text-ink">{s.title}</h3>
+              <div className="text-xs font-semibold text-brand">{s.subtitle}</div>
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">{s.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -286,502 +230,676 @@ export function DifferenceSection() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* 3. FIELD DIGITAL TWIN — real MapLibre map                         */
-/* ------------------------------------------------------------------ */
-
-const TWIN_LAYERS = [
-  { key: "moisture", label: "Soil Moisture" },
-  { key: "stress", label: "Crop Stress" },
-  { key: "ndvi", label: "Vegetation Health" },
-  { key: "priority", label: "Irrigation Priority" },
-];
+/* ==================================================================
+   04 — FIELD DIGITAL TWIN: Real interactive MapLibre GIS
+   Field occupies most visual area, 4 zones, layer switcher, inspector
+   ================================================================== */
 
 export function TwinSection() {
   const [layer, setLayer] = useState("moisture");
-  const [selected, setSelected] = useState<string | null>("zone-b");
+  const [selectedId, setSelectedId] = useState("zone-b");
+
+  const layers = [
+    { key: "moisture", label: "Soil Moisture" },
+    { key: "stress", label: "Crop Stress" },
+    { key: "ndvi", label: "Vegetation Health" },
+    { key: "priority", label: "Irrigation Priority" },
+  ];
+
+  const currentZone = useMemo(() => {
+    return ZONES.find((z) => z.id === selectedId) || ZONES[1];
+  }, [selectedId]);
 
   return (
-    <section id="twin" className="scroll-mt-16 border-y border-line bg-surface">
-      <div className="mx-auto max-w-7xl px-6 py-20">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1fr_1.25fr]">
-          <motion.div
-            variants={staggerContainer(0.08)}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-80px" }}
-          >
-            <motion.div variants={fadeUp} className="text-micro font-semibold uppercase tracking-[0.18em] text-brand">
-              Field digital twin
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              className="mt-3 text-[32px] font-semibold leading-tight tracking-tight text-ink md:text-[40px]"
-            >
-              A living copy of your field, in water balance.
-            </motion.h2>
-            <motion.p variants={fadeUp} className="mt-4 leading-relaxed text-ink-muted">
-              Field boundaries, four irrigation zones, soil moisture, crop stress, vegetation health
-              and sensor positions — fused into one virtual field that updates as conditions change.
-              Every simulation and every budget decision runs against this twin.
-            </motion.p>
-            <motion.ul variants={staggerContainer(0.07)} className="mt-7 space-y-3">
-              {[
-                { icon: Droplets, text: "Root-zone moisture tracked at 30 cm depth, per zone" },
-                { icon: CloudRain, text: "Effective rainfall and evapotranspiration in the water balance" },
-                { icon: Sprout, text: "Satellite-derived vegetation health, revisited every 5 days" },
-              ].map((f) => (
-                <motion.li key={f.text} variants={fadeUp} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-light">
-                    <f.icon size={13} className="text-brand" />
-                  </span>
-                  <span className="text-sm leading-relaxed text-ink-soft">{f.text}</span>
-                </motion.li>
-              ))}
-            </motion.ul>
-            <motion.div variants={fadeUp} className="mt-8">
-              <LinkButton href="/twin" variant="primary" className="group">
-                Open the Field Twin <ArrowRight size={15} className="icon-nudge" />
-              </LinkButton>
-            </motion.div>
-          </motion.div>
-
-          {/* Real map — lazy-loaded MapLibre with real GeoJSON zones */}
-          <motion.div
-            variants={riseUp}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
-            className="relative"
-          >
-            <div className="overflow-hidden rounded-xl2 border border-line shadow-raised">
-              <div className="h-[420px]">
-                <FarmMap
-                  zones={ZONES}
-                  layer={layer}
-                  onLayerChange={setLayer}
-                  selectedZoneId={selected}
-                  onZoneSelect={(id) => setSelected(id === selected ? null : id)}
-                  showLegend
-                />
-              </div>
+    <section id="twin" className="scroll-mt-16 border-b border-line bg-surface py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+              04 — Operational GIS Workspace
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              {TWIN_LAYERS.map((l) => (
-                <button
-                  key={l.key}
-                  onClick={() => setLayer(l.key)}
-                  aria-pressed={layer === l.key}
-                  className={`rounded-full border px-3.5 py-1 text-tiny font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-95 ${
-                    layer === l.key
-                      ? "border-brand bg-brand-light text-brand-dark shadow-sm"
-                      : "border-line bg-surface text-ink-muted hover:bg-subtle hover:text-ink"
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
-              <span className="ml-auto"><DemoPill /></span>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 4. WHAT-IF — "What happens if you wait?"                          */
-/* ------------------------------------------------------------------ */
-
-const SCENARIOS = [
-  { key: "now", label: "Irrigate now", water: 720, stress: 2, risk: "High waste risk", tone: "neutral" as const },
-  { key: "wait6", label: "Wait 6 hours", water: 310, stress: 5, risk: "Low waste risk", tone: "recommended" as const },
-  { key: "wait24", label: "Wait 24 hours", water: 0, stress: 39, risk: "Higher stress risk", tone: "danger" as const },
-];
-
-export function WhatIfSection() {
-  const [stage, setStage] = useState(0);
-  const sectionRef = useRef<HTMLElement>(null);
-  const inView = useInView(sectionRef, { once: true, margin: "-120px" });
-
-  // Staged reveal: cards → water usage → stress risk → recommended highlight
-  useEffect(() => {
-    if (!inView || stage > 0) return;
-    const timers = [
-      window.setTimeout(() => setStage(1), 350),
-      window.setTimeout(() => setStage(2), 900),
-      window.setTimeout(() => setStage(3), 1500),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [inView, stage]);
-
-  return (
-    <section ref={sectionRef} id="what-if" className="scroll-mt-16 mx-auto max-w-7xl px-6 py-20">
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, margin: "-80px" }}
-        className="max-w-2xl"
-      >
-        <div className="text-micro font-semibold uppercase tracking-[0.18em] text-brand">
-          What-if simulation
-        </div>
-        <h2 className="mt-3 text-[32px] font-semibold leading-tight tracking-tight text-ink md:text-[40px]">
-          What happens if you wait?
-        </h2>
-        <p className="mt-4 leading-relaxed text-ink-muted">
-          The twin projects soil moisture 48 hours ahead under each choice — rainfall forecast, crop
-          demand and soil retention included — so the field&apos;s future is tested, not guessed.
-        </p>
-      </motion.div>
-
-      {/* Scenario cards — staged reveal */}
-      <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {SCENARIOS.map((s, i) => {
-          const recommended = s.tone === "recommended";
-          const danger = s.tone === "danger";
-          return (
-            <motion.div
-              key={s.key}
-              initial={{ opacity: 0, y: 24 }}
-              animate={stage >= 1 ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, ease: EASE, delay: i * 0.12 }}
-              className={`relative overflow-hidden rounded-xl2 border p-6 transition-[box-shadow] duration-300 ${
-                recommended
-                  ? "border-brand bg-brand-light shadow-raised"
-                  : danger
-                    ? "border-[#E8C4C4] bg-surface"
-                    : "border-line bg-surface shadow-card"
-              }`}
-            >
-              {/* recommended highlight ring — stage 4 */}
-              <AnimatePresence>
-                {recommended && stage >= 3 && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-                    className="absolute right-4 top-4 rounded-md bg-brand px-2 py-1 text-micro font-semibold text-white shadow-card"
-                  >
-                    Recommended
-                  </motion.span>
-                )}
-              </AnimatePresence>
-
-              <div className="text-micro font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                {s.label}
-              </div>
-
-              {/* water usage — stage 2 count-up */}
-              <div className="mt-3 text-[34px] font-semibold leading-none tracking-tight text-ink">
-                {stage >= 2 ? <CountUp to={s.water} play={inView} /> : "—"}
-                <span className="ml-1.5 text-base font-medium text-ink-faint">L</span>
-              </div>
-              <div className="mt-1 text-micro text-ink-faint">water required</div>
-
-              {/* stress risk — stage 3 bar fill */}
-              <div className="mt-5">
-                <div className="flex items-center justify-between text-tiny">
-                  <span className="text-ink-muted">Predicted stress</span>
-                  <span className="font-semibold text-ink">{stage >= 3 ? `${s.stress}%` : "—"}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#E3ECE6]">
-                  <motion.div
-                    className={`h-full rounded-full ${recommended ? "bg-brand" : danger ? "bg-danger" : "bg-[#7A8B3A]"}`}
-                    initial={{ width: 0 }}
-                    animate={stage >= 3 ? { width: `${s.stress}%` } : {}}
-                    transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
-                  />
-                </div>
-              </div>
-
-              <div
-                className={`mt-5 rounded-lg px-3 py-2 text-tiny font-medium ${
-                  recommended
-                    ? "bg-white/70 text-brand-dark"
-                    : danger
-                      ? "bg-[#FBEFEF] text-[#A03838]"
-                      : "bg-subtle text-ink-soft"
+            <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight text-ink sm:text-[40px]">
+              Field Digital Twin
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted">
+              Explore the four active management zones of Kisan Bhimavaram Farm. Select any zone or
+              switch layers to inspect root-zone soil balance.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {layers.map((l) => (
+              <button
+                key={l.key}
+                onClick={() => setLayer(l.key)}
+                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                  layer === l.key
+                    ? "bg-brand text-white shadow-card"
+                    : "border border-line bg-surface text-ink-soft hover:bg-subtle"
                 }`}
               >
-                {s.risk}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, margin: "-40px" }}
-        className="mt-8 flex flex-wrap items-center gap-3"
-      >
-        <LinkButton href="/simulator" variant="primary" className="group">
-          Run the full simulation <ArrowRight size={15} className="icon-nudge" />
-        </LinkButton>
-        <span className="text-micro text-ink-faint">48-hour projection · weather uncertainty included</span>
-      </motion.div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 5. WATER BUDGET — "Use the water you actually have."              */
-/* ------------------------------------------------------------------ */
-
-const ALLOCATION = [
-  { zone: "Zone A", need: 400, allocated: 0, note: "Deferred — lowest benefit per litre" },
-  { zone: "Zone B", need: 900, allocated: 900, note: "Highest stress reduction per litre" },
-  { zone: "Zone C", need: 600, allocated: 400, note: "Partial — rain covers the rest" },
-  { zone: "Zone D", need: 800, allocated: 700, note: "Near-full — clay loam holds water" },
-];
-
-export function BudgetSection() {
-  const barsRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(barsRef, { once: true, margin: "-80px" });
-  const maxNeed = Math.max(...ALLOCATION.map((a) => a.need));
-
-  return (
-    <section id="budget" className="scroll-mt-16 border-y border-line bg-surface">
-      <div className="mx-auto max-w-7xl px-6 py-20">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1fr_1.2fr]">
-          <motion.div
-            variants={staggerContainer(0.08)}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-80px" }}
-          >
-            <motion.div variants={fadeUp} className="text-micro font-semibold uppercase tracking-[0.18em] text-brand">
-              Water budget optimizer
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              className="mt-3 text-[32px] font-semibold leading-tight tracking-tight text-ink md:text-[40px]"
-            >
-              Use the water you <span className="text-brand">actually have.</span>
-            </motion.h2>
-            <motion.p variants={fadeUp} className="mt-4 leading-relaxed text-ink-muted">
-              When the tank and canal quota can&apos;t cover every zone, the optimizer allocates each
-              litre where it reduces predicted crop stress the most — with an explicit, auditable
-              rationale for every decision.
-            </motion.p>
-
-            <motion.div variants={staggerContainer(0.07)} className="mt-8 grid grid-cols-3 gap-3">
-              {[
-                { label: "Available water", value: "2,000 L", tone: "text-brand-dark" },
-                { label: "Predicted demand", value: "2,700 L", tone: "text-ink" },
-                { label: "Shortfall", value: "700 L", tone: "text-warning" },
-              ].map((s) => (
-                <motion.div
-                  key={s.label}
-                  variants={fadeUp}
-                  className="rounded-xl2 border border-line bg-page p-4"
-                >
-                  <div className="text-micro text-ink-muted">{s.label}</div>
-                  <div className={`mt-1 text-xl font-semibold tracking-tight ${s.tone}`}>{s.value}</div>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            <motion.p variants={fadeUp} className="mt-6 rounded-xl2 border border-line bg-subtle p-4 text-tiny leading-relaxed text-ink-muted">
-              Water is prioritized according to predicted crop-stress reduction — not spread evenly.
-              Zone A waits for the forecast rain; Zone B is irrigated in full.
-            </motion.p>
-          </motion.div>
-
-          {/* Animated allocation bars */}
-          <motion.div
-            ref={barsRef}
-            variants={riseUp}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
-            className="rounded-xl2 border border-line bg-page p-6 shadow-card"
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <div className="text-sm font-semibold text-ink">Allocation of 2,000 L</div>
-              <DemoPill />
+        {/* GIS Grid: 9 Cols Map, 3 Cols Zone Telemetry Panel */}
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Large Map Area */}
+          <div className="overflow-hidden rounded-2xl border border-line shadow-card lg:col-span-8">
+            <div className="h-[460px] w-full">
+              <FarmMap
+                zones={ZONES}
+                layer={layer}
+                selectedZoneId={selectedId}
+                onZoneSelect={(id) => setSelectedId(id || "zone-b")}
+                showLegend
+              />
             </div>
-            <div className="space-y-5">
-              {ALLOCATION.map((a, i) => (
-                <div key={a.zone}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-ink">{a.zone}</span>
-                      <span className="rounded border border-line bg-surface px-1.5 py-0.5 text-micro font-medium text-ink-muted">
-                        needs {fmtL(a.need)}
-                      </span>
-                    </div>
-                    <span className="text-sm font-semibold text-brand-dark">
-                      {inView ? <CountUp to={a.allocated} play={inView} /> : 0} L
-                    </span>
+          </div>
+
+          {/* Right Inspector Panel */}
+          <div className="flex flex-col justify-between rounded-2xl border border-line bg-page p-6 shadow-card lg:col-span-4">
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div>
+                  <h3 className="text-xl font-extrabold text-ink">{currentZone.name}</h3>
+                  <div className="text-xs font-medium text-ink-muted">
+                    {currentZone.areaHa} ha · {currentZone.soilType}
                   </div>
-                  <div className="relative mt-2 h-3.5 overflow-hidden rounded-md bg-[#E3ECE6]">
-                    {/* requirement marker */}
-                    <div
-                      className="absolute top-0 h-full w-0.5 bg-ink-soft/40"
-                      style={{ left: `${(a.need / maxNeed) * 100}%` }}
-                    />
-                    <motion.div
-                      className={`h-full rounded-md ${a.allocated === 0 ? "bg-[#C9D6CE]" : "bg-brand"}`}
-                      initial={{ width: 0 }}
-                      animate={inView ? { width: `${(a.allocated / maxNeed) * 100}%` } : {}}
-                      transition={{ duration: 0.9, ease: EASE, delay: 0.2 + i * 0.15 }}
-                    />
-                  </div>
-                  <div className="mt-1.5 text-micro text-ink-muted">{a.note}</div>
                 </div>
-              ))}
+                <span className="rounded-full bg-brand-light px-3 py-1 text-xs font-extrabold text-brand-dark">
+                  Priority P{currentZone.priority}
+                </span>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-3.5">
+                  <span className="text-xs font-medium text-ink-muted">Root-Zone Moisture</span>
+                  <span className="text-lg font-bold text-ink">{currentZone.moisturePct}%</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-3.5">
+                  <span className="text-xs font-medium text-ink-muted">Predicted Crop Stress</span>
+                  <span className="text-lg font-bold text-warning">{currentZone.stressRiskPct}%</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-3.5">
+                  <span className="text-xs font-medium text-ink-muted">Water Requirement</span>
+                  <span className="text-lg font-bold text-brand-dark">{fmtL(currentZone.waterRequirementL)}</span>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-xl border border-line/80 bg-subtle p-3.5 text-xs leading-relaxed text-ink-soft">
+                {currentZone.id === "zone-b"
+                  ? "Zone B holds the highest immediate deficit. Recommended for primary allocation under scarce water quotas."
+                  : "Zone is currently in a safe moisture bracket. Irrigation can be deferred pending 48h rainfall."}
+              </div>
             </div>
-            <div className="mt-5 flex items-center gap-4 border-t border-line pt-4 text-micro text-ink-muted">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-brand" /> Allocated
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-[#C9D6CE]" /> Deferred
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-0.5 bg-ink-soft/50" /> Required
-              </span>
+
+            <div className="mt-6 pt-4 border-t border-line">
+              <LinkButton href="/twin" variant="primary" className="w-full text-center">
+                Open Full GIS Workspace →
+              </LinkButton>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* 6. WHY IT LEARNS — Field Water Fingerprint                        */
-/* ------------------------------------------------------------------ */
+/* ==================================================================
+   05 — WHAT-IF SIMULATION: Signature Hero Feature
+   "DON'T JUST PREDICT. SIMULATE."
+   Current State + 3 Futures + 48h Trajectory Line Chart
+   ================================================================== */
 
-const FINGERPRINT_DATA = [
-  { label: "Aug 30", observed: 8.2, predicted: 7.6 },
-  { label: "Sep 2", observed: 9.1, predicted: 8.4 },
-  { label: "Sep 5", observed: 7.4, predicted: 8.1 },
-  { label: "Sep 8", observed: 10.3, predicted: 9.2 },
-  { label: "Sep 11", observed: 9.8, predicted: 9.6 },
-  { label: "Sep 14", observed: 11.2, predicted: 10.1 },
-  { label: "Sep 17", observed: 10.6, predicted: 10.8 },
-  { label: "Sep 20", observed: 12.1, predicted: 11.4 },
-  { label: "Sep 23", observed: 11.8, predicted: 11.9 },
-  { label: "Sep 26", observed: 12.6, predicted: 12.2 },
-];
+export function WhatIfSection() {
+  const [selectedScenario, setSelectedScenario] = useState<"now" | "wait6" | "wait24">("wait6");
 
-export function FingerprintSection() {
+  const scenarios = [
+    {
+      key: "now" as const,
+      label: "Irrigate Now",
+      water: 720,
+      stress: 2.1,
+      desc: "Water released immediately. High risk of washing out nutrients if expected rain falls.",
+      recommended: false,
+    },
+    {
+      key: "wait6" as const,
+      label: "Wait 6 Hours",
+      water: 310,
+      stress: 5.2,
+      desc: "Allows forecast rain to infiltrate first. Saves 410 L while keeping stress safely below 15%.",
+      recommended: true,
+    },
+    {
+      key: "wait24" as const,
+      label: "Wait 24 Hours",
+      water: 0,
+      stress: 39.4,
+      desc: "No water added. If rain misses or arrives late, crop enters severe moisture stress.",
+      recommended: false,
+    },
+  ];
+
+  // 48h trajectory projection based on selected scenario
+  const chartData = useMemo(() => {
+    return Array.from({ length: 9 }).map((_, i) => {
+      const hour = i * 6;
+      let moisture = 24.6;
+      if (selectedScenario === "now") {
+        moisture = hour < 6 ? 24.6 + hour * 1.5 : Math.max(22, 33 - (hour - 6) * 0.25);
+      } else if (selectedScenario === "wait6") {
+        moisture = hour < 6 ? 24.6 - hour * 0.15 : hour < 18 ? 23.7 + (hour - 6) * 0.8 : 31 - (hour - 18) * 0.2;
+      } else {
+        moisture = Math.max(14.2, 24.6 - hour * 0.22);
+      }
+      return {
+        time: `${hour}h`,
+        moisture: Math.round(moisture * 10) / 10,
+        wiltingPoint: 14.0,
+        refillPoint: 22.0,
+      };
+    });
+  }, [selectedScenario]);
+
   return (
-    <section className="mx-auto max-w-7xl px-6 py-20">
-      <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
+    <section id="what-if" className="scroll-mt-16 border-b border-line bg-page py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
         <motion.div
-          variants={staggerContainer(0.08)}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-80px" }}
-        >
-          <motion.div variants={fadeUp} className="text-micro font-semibold uppercase tracking-[0.18em] text-brand">
-            Why it learns
-          </motion.div>
-          <motion.h2
-            variants={fadeUp}
-            className="mt-3 text-[32px] font-semibold leading-tight tracking-tight text-ink md:text-[40px]"
-          >
-            The Field Water Fingerprint.
-          </motion.h2>
-          <motion.p variants={fadeUp} className="mt-4 leading-relaxed text-ink-muted">
-            Every field responds differently to irrigation, rainfall, and drying. AquaTwin learns
-            this particular field&apos;s response — how much moisture each litre adds, how fast it
-            dries, how it reacts to an effective rain day — and tightens its simulations with every
-            event.
-          </motion.p>
-          <motion.ul variants={staggerContainer(0.07)} className="mt-7 space-y-3">
-            {[
-              { k: "Observed response", v: "What the sensors actually measured after each event" },
-              { k: "Predicted response", v: "What the twin expected — the gap drives learning" },
-              { k: "Compounding accuracy", v: "Each irrigation sharpens the next simulation" },
-            ].map((f) => (
-              <motion.li key={f.k} variants={fadeUp} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-light">
-                  <Wand2 size={13} className="text-brand" />
-                </span>
-                <div>
-                  <span className="text-sm font-semibold text-ink">{f.k}</span>
-                  <span className="text-sm text-ink-muted"> — {f.v}</span>
-                </div>
-              </motion.li>
-            ))}
-          </motion.ul>
-        </motion.div>
-
-        {/* Real chart — observed vs predicted response */}
-        <motion.div
-          variants={riseUp}
+          variants={fadeUp}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: "-60px" }}
-          className="rounded-xl2 border border-line bg-surface p-5 shadow-card"
+          className="max-w-2xl"
         >
-          <div className="mb-1 text-sm font-semibold text-ink">Moisture response per event</div>
-          <div className="mb-3 text-micro text-ink-faint">Observed vs predicted · last 10 irrigations · demo</div>
-          <div style={{ height: 240 }}>
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+            05 — The Signature Innovation
+          </div>
+          <h2 className="mt-2 text-[34px] font-extrabold leading-tight tracking-tight text-ink sm:text-[44px]">
+            Don&apos;t just predict. <span className="text-brand">Simulate.</span>
+          </h2>
+          <p className="mt-3 text-base text-ink-muted">
+            Test future irrigation scenarios against the field&apos;s physical model before touching a single pump valve.
+          </p>
+        </motion.div>
+
+        {/* Current State Bar */}
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl2 border border-line bg-surface p-5 shadow-card">
+          <div className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+            Live Field Baseline:
+          </div>
+          <div className="flex flex-wrap items-center gap-6 text-sm">
+            <div>
+              <span className="text-ink-muted">Current Moisture:</span>{" "}
+              <strong className="text-ink">24.6%</strong>
+            </div>
+            <div>
+              <span className="text-ink-muted">Rain Probability:</span>{" "}
+              <strong className="text-info">70% in 7h</strong>
+            </div>
+            <div>
+              <span className="text-ink-muted">Available Water:</span>{" "}
+              <strong className="text-brand-dark">2,000 L</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Future Scenario Cards */}
+        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
+          {scenarios.map((s) => {
+            const isSelected = selectedScenario === s.key;
+            return (
+              <div
+                key={s.key}
+                onClick={() => setSelectedScenario(s.key)}
+                className={`relative cursor-pointer rounded-2xl border p-6 transition-all duration-200 ${
+                  isSelected
+                    ? "border-brand bg-surface shadow-raised ring-2 ring-brand/30"
+                    : "border-line bg-surface/70 hover:bg-surface hover:shadow-card"
+                }`}
+              >
+                {s.recommended && (
+                  <span className="absolute right-4 top-4 rounded-full bg-brand px-3 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
+                    Recommended
+                  </span>
+                )}
+                <div className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                  {s.label}
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl font-extrabold text-ink">{s.water}</span>
+                  <span className="text-xs font-semibold text-ink-muted">Litres required</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-ink-muted">Predicted Crop Stress:</span>
+                  <span className={`font-bold ${s.stress > 20 ? "text-danger" : "text-success"}`}>
+                    {s.stress}%
+                  </span>
+                </div>
+                <p className="mt-4 border-t border-line/80 pt-3 text-xs leading-relaxed text-ink-muted">
+                  {s.desc}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 48-Hour Soil Moisture Trajectory Chart */}
+        <div className="mt-8 rounded-2xl border border-line bg-surface p-6 shadow-card">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-bold text-ink">48-Hour Root-Zone Trajectory</h3>
+              <p className="text-xs text-ink-muted">Simulated outcome for scenario: <strong className="text-brand">{selectedScenario.toUpperCase()}</strong></p>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5 text-ink-soft">
+                <span className="h-2 w-2 rounded-full bg-brand" /> Simulated Moisture
+              </span>
+              <span className="flex items-center gap-1.5 text-ink-muted">
+                <span className="h-0.5 w-3 bg-danger" /> Wilting Point (14%)
+              </span>
+            </div>
+          </div>
+
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={FINGERPRINT_DATA} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
-                <CartesianGrid stroke={CHART.grid} vertical={false} />
-                <XAxis dataKey="label" {...AXIS_STYLE} interval={2} />
-                <YAxis {...AXIS_STYLE} tickFormatter={(v) => `+${v}%`} />
-                <ChartTooltip formatter={(v) => `+${Number(v).toFixed(1)}%`} />
-                <Bar dataKey="predicted" name="Predicted response" fill={CHART.alternative} radius={[3, 3, 0, 0]} maxBarSize={18} />
-                <Line dataKey="observed" name="Observed response" stroke={CHART.recommended} strokeWidth={2.5} dot={{ r: 3 }} />
-              </ComposedChart>
+              <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
+                <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="time" {...AXIS_STYLE} />
+                <YAxis domain={[10, 36]} tickFormatter={(v) => `${v}%`} {...AXIS_STYLE} />
+                <ChartTooltip formatter={(v) => `${v}%`} />
+                <ReferenceLine y={14} stroke="#C45A55" strokeDasharray="4 4" />
+                <ReferenceLine y={22} stroke="#B98227" strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="moisture"
+                  stroke={CHART.recommended}
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: CHART.recommended }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-3 flex items-center gap-4 border-t border-line pt-3 text-micro text-ink-muted">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-brand" /> Observed
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-[#C9D6CE]" /> Predicted
-            </span>
-            <span className="ml-auto font-medium text-brand-dark">Gap narrowing — model converging</span>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* editorial crop detail band */}
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, margin: "-40px" }}
-        className="relative mt-16 aspect-[21/8] overflow-hidden rounded-2xl border border-line shadow-card"
-      >
-        <Image
-          src="/images/optimized_irrigation.jpg"
-          alt="Controlled irrigation channel flowing through Indian rice paddy fields"
-          fill
-          sizes="100vw"
-          className="object-cover transition-transform duration-700 ease-out hover:scale-[1.02]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/70 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute bottom-4 left-6 rounded-full border border-line bg-white/95 px-3 py-1 text-micro font-medium text-ink-soft shadow-card backdrop-blur-md">
-          Continuous Calibration · Every irrigation cycle refines predictive soil response
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* 7. FINAL CTA — "Make every litre count."                          */
-/* ------------------------------------------------------------------ */
+/* ==================================================================
+   06 — WEATHER UNCERTAINTY: "What if the forecast is wrong?"
+   3 outcomes: Rain Occurs / Partial Rain / Rain Fails
+   ================================================================== */
+
+export function WeatherUncertaintySection() {
+  const [outcome, setOutcome] = useState<"rain" | "partial" | "fail">("rain");
+
+  const outcomes = [
+    {
+      key: "rain" as const,
+      label: "Rain Occurs (12.3 mm)",
+      prob: "70% Probability",
+      moistureOutcome: "29.8%",
+      stressOutcome: "3.2%",
+      waterNeed: "0 L",
+      verdict: "Optimal outcome. Waiting avoided pumping water that would have overflowed field bunds.",
+    },
+    {
+      key: "partial" as const,
+      label: "Partial Rain (3.5 mm)",
+      prob: "20% Probability",
+      moistureOutcome: "24.2%",
+      stressOutcome: "6.8%",
+      waterNeed: "180 L",
+      verdict: "Safe threshold maintained. Minor supplemental watering scheduled for tomorrow morning.",
+    },
+    {
+      key: "fail" as const,
+      label: "Rain Fails (0 mm)",
+      prob: "10% Probability",
+      moistureOutcome: "21.5%",
+      stressOutcome: "11.4%",
+      waterNeed: "400 L",
+      verdict: "Safety buffer held. System triggers emergency irrigation window before stress reaches threshold.",
+    },
+  ];
+
+  const current = outcomes.find((o) => o.key === outcome) || outcomes[0];
+
+  return (
+    <section className="border-b border-line bg-surface py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+          <div className="lg:col-span-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+              06 — Risk Sensitivity
+            </div>
+            <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight text-ink sm:text-[40px]">
+              What if the forecast <br className="hidden sm:inline" />
+              is wrong?
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-muted">
+              Farmers distrust algorithms when they don&apos;t account for weather forecast error.
+              AquaTwin stress-tests every recommendation against full rain, partial rain, and rain failure.
+            </p>
+
+            <div className="mt-8 space-y-3">
+              {outcomes.map((o) => (
+                <button
+                  key={o.key}
+                  onClick={() => setOutcome(o.key)}
+                  className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                    outcome === o.key
+                      ? "border-brand bg-brand-light shadow-card ring-1 ring-brand/30"
+                      : "border-line bg-page hover:bg-subtle"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-ink">{o.label}</span>
+                    <span className="text-xs font-semibold text-brand-dark">{o.prob}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-page p-6 shadow-card lg:col-span-7">
+            <div className="border-b border-line pb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-faint">
+                Simulated Outcome for {current.label}
+              </span>
+              <h3 className="mt-1 text-xl font-extrabold text-ink">{current.verdict}</h3>
+            </div>
+
+            <div className="mt-6 grid grid-cols-3 gap-4">
+              <div className="rounded-xl border border-line bg-surface p-4 text-center">
+                <div className="text-xs text-ink-muted">Post-Event Moisture</div>
+                <div className="mt-1 text-2xl font-extrabold text-ink">{current.moistureOutcome}</div>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-4 text-center">
+                <div className="text-xs text-ink-muted">Predicted Crop Stress</div>
+                <div className="mt-1 text-2xl font-extrabold text-success">{current.stressOutcome}</div>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-4 text-center">
+                <div className="text-xs text-ink-muted">Supplemental Water</div>
+                <div className="mt-1 text-2xl font-extrabold text-brand-dark">{current.waterNeed}</div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-line bg-surface p-4 text-xs leading-relaxed text-ink-muted">
+              <strong>Audit Guarantee:</strong> In all three uncertainty branches, predicted crop-stress
+              remains below the critical 15% stress threshold. The decision to wait is mathematically robust.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ==================================================================
+   07 — WATER BUDGET: "Use the water you actually have."
+   Interactive slider 500L -> 3000L with animated allocation bars
+   ================================================================== */
+
+export function BudgetSection() {
+  const [budget, setBudget] = useState(2000);
+
+  // Dynamic distribution across zones based on budget
+  const allocations = useMemo(() => {
+    // Total need = 2700 L (Zone B 900, D 800, C 600, A 400)
+    const b = Math.min(900, Math.max(0, budget * 0.45));
+    const d = Math.min(800, Math.max(0, (budget - b) * 0.65));
+    const c = Math.min(600, Math.max(0, (budget - b - d) * 0.8));
+    const a = Math.min(400, Math.max(0, budget - b - d - c));
+
+    return [
+      { name: "Zone B", need: 900, allocated: Math.round(b), priority: "P1", status: b >= 900 ? "Full" : "Partial" },
+      { name: "Zone D", need: 800, allocated: Math.round(d), priority: "P2", status: d >= 800 ? "Full" : "Partial" },
+      { name: "Zone C", need: 600, allocated: Math.round(c), priority: "P3", status: c >= 600 ? "Full" : c > 0 ? "Partial" : "Deferred" },
+      { name: "Zone A", need: 400, allocated: Math.round(a), priority: "P4", status: a > 0 ? "Partial" : "Deferred" },
+    ];
+  }, [budget]);
+
+  return (
+    <section id="budget" className="scroll-mt-16 border-b border-line bg-page py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+          <div className="lg:col-span-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+              07 — Constrained Optimization
+            </div>
+            <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight text-ink sm:text-[40px]">
+              Use the water you <span className="text-brand">actually have.</span>
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-muted">
+              When canal quotas and storage tanks cannot cover total field demand, AquaTwin allocates
+              every litre where it creates the greatest drop in crop stress.
+            </p>
+
+            {/* Interactive Slider */}
+            <div className="mt-8 rounded-2xl border border-line bg-surface p-5 shadow-card">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-ink-muted uppercase tracking-wider">Available Water Quota:</span>
+                <span className="text-xl font-extrabold text-brand-dark">{budget.toLocaleString()} L</span>
+              </div>
+              <input
+                type="range"
+                min="500"
+                max="3000"
+                step="250"
+                value={budget}
+                onChange={(e) => setBudget(Number(e.target.value))}
+                className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-lg bg-line accent-brand"
+              />
+              <div className="mt-2 flex justify-between text-[11px] font-semibold text-ink-faint">
+                <span>500 L (Severe Drought)</span>
+                <span>3,000 L (Surplus)</span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <LinkButton href="/water-budget" variant="primary" className="rounded-full">
+                Open Water Budget Workspace →
+              </LinkButton>
+            </div>
+          </div>
+
+          {/* Allocation Breakdown */}
+          <div className="rounded-2xl border border-line bg-surface p-6 shadow-card lg:col-span-7">
+            <div className="flex items-center justify-between border-b border-line pb-4">
+              <h3 className="text-base font-bold text-ink">Optimized Distribution (2,700 L Total Demand)</h3>
+              <span className="text-xs font-bold text-brand-dark">
+                {Math.round((allocations.reduce((s, z) => s + z.allocated, 0) / 2700) * 100)}% Demand Covered
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-5">
+              {allocations.map((a) => (
+                <div key={a.name}>
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-ink">
+                      {a.name} <span className="text-ink-faint">({a.priority})</span>
+                    </span>
+                    <span className="text-brand-dark">
+                      {a.allocated} L / {a.need} L ({a.status})
+                    </span>
+                  </div>
+                  <div className="mt-2 h-3.5 w-full overflow-hidden rounded-full bg-subtle">
+                    <motion.div
+                      className="h-full rounded-full bg-brand"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(a.allocated / a.need) * 100}%` }}
+                      transition={{ duration: 0.5, ease: EASE }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 border-t border-line pt-4 text-xs leading-relaxed text-ink-muted">
+              Prioritization strictly targets Zone B and D first. Zone A is safely deferred because
+              forecast rainfall satisfies its moisture curve without pump energy.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ==================================================================
+   08 — FIELD WATER FINGERPRINT: "Every field behaves differently."
+   Predicted vs Observed Response Real Chart
+   ================================================================== */
+
+export function FingerprintSection() {
+  const chartData = [
+    { event: "Aug 28", predicted: 7.2, observed: 7.0 },
+    { event: "Sep 02", predicted: 8.5, observed: 8.9 },
+    { event: "Sep 07", predicted: 6.8, observed: 7.1 },
+    { event: "Sep 12", predicted: 9.4, observed: 9.1 },
+    { event: "Sep 18", predicted: 10.1, observed: 10.4 },
+    { event: "Sep 24", predicted: 8.9, observed: 8.8 },
+  ];
+
+  return (
+    <section className="border-b border-line bg-surface py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+          <div className="lg:col-span-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+              08 — Self-Calibrating Physics
+            </div>
+            <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight text-ink sm:text-[40px]">
+              Every field behaves <br className="hidden sm:inline" />
+              differently.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-muted">
+              Soil texture, drainage, and root depth vary across plots. AquaTwin learns your field&apos;s
+              specific moisture response after every irrigation event — narrowing the error gap over time.
+            </p>
+
+            <div className="mt-6 space-y-2.5 text-xs text-ink-soft">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-success shrink-0" />
+                <span>Calibrates moisture gain per 100 litres pumped</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-success shrink-0" />
+                <span>Learns site-specific drying rates under varying heat</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-success shrink-0" />
+                <span>Calculates true effective infiltration from rain events</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-page p-6 shadow-card lg:col-span-7">
+            <div className="flex items-center justify-between border-b border-line pb-4">
+              <div>
+                <h3 className="text-sm font-bold text-ink">Observed vs. Predicted Moisture Response</h3>
+                <p className="text-xs text-ink-muted">Last 6 irrigation cycles (soil moisture gain %)</p>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-semibold">
+                <span className="flex items-center gap-1.5 text-brand">
+                  <span className="h-2 w-2 rounded-full bg-brand" /> Observed
+                </span>
+                <span className="flex items-center gap-1.5 text-ink-muted">
+                  <span className="h-2 w-2 rounded-full bg-ink-faint" /> Predicted
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                  <CartesianGrid stroke={CHART.grid} vertical={false} />
+                  <XAxis dataKey="event" {...AXIS_STYLE} />
+                  <YAxis {...AXIS_STYLE} tickFormatter={(v) => `+${v}%`} />
+                  <ChartTooltip formatter={(v) => `+${v}%`} />
+                  <Bar dataKey="predicted" fill="#A4B8AE" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  <Line dataKey="observed" stroke={CHART.recommended} strokeWidth={2.5} dot={{ r: 4 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ==================================================================
+   09 — IMPACT: Verified demo indicators with agricultural photo
+   ================================================================== */
+
+export function ImpactSection() {
+  const impacts = [
+    { stat: "453 Litres", label: "Average saved per irrigation window on 10 ha" },
+    { stat: "Zero Deficit", label: "Crop stress kept below critical 15% threshold" },
+    { stat: "70% Forecast", label: "Rainfall successfully utilized to replace canal pumping" },
+    { stat: "100% Auditable", label: "Every decision backed by explicit physical rationale" },
+  ];
+
+  return (
+    <section className="border-b border-line bg-page py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line shadow-card lg:col-span-5">
+            <Image
+              src="/images/optimized_irrigation.jpg"
+              alt="Controlled channel irrigation through South Indian rice paddies"
+              fill
+              sizes="(max-width: 1024px) 100vw, 40vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/60 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-ink-soft shadow-card backdrop-blur-md">
+              Targeted Channel Flow · Zero Tailwater Waste
+            </div>
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+              09 — Quantified Results
+            </div>
+            <h2 className="mt-2 text-[32px] font-extrabold leading-tight tracking-tight text-ink sm:text-[40px]">
+              Precision without complexity.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-ink-muted">
+              Results measured across calibrated demo runs at Kisan Bhimavaram Farm.
+              Smart decisions conserve water and electricity without putting crop yield at risk.
+            </p>
+
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              {impacts.map((imp) => (
+                <div key={imp.stat} className="rounded-2xl border border-line bg-surface p-5 shadow-card">
+                  <div className="text-2xl font-extrabold text-brand-dark sm:text-3xl">{imp.stat}</div>
+                  <div className="mt-1 text-xs text-ink-muted leading-relaxed">{imp.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ==================================================================
+   10 — FINAL CTA: "Make every litre count."
+   Cinematic sunrise background + pill buttons
+   ================================================================== */
 
 export function FinalCtaSection() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0">
+    <section className="relative overflow-hidden bg-page py-24 lg:py-32">
+      <div className="absolute inset-0 z-0">
         <Image
           src="/images/login_sunrise.jpg"
           alt="Golden hour sunrise over South Indian rice farmland"
@@ -789,76 +907,77 @@ export function FinalCtaSection() {
           sizes="100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#163A31]/90 via-[#163A31]/80 to-[#163A31]/60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#163A31]/95 via-[#163A31]/85 to-[#163A31]/65" />
       </div>
-      <div className="relative mx-auto max-w-7xl px-6 py-28">
+
+      <div className="relative z-10 mx-auto max-w-7xl px-6">
         <motion.div
-          variants={staggerContainer(0.09)}
+          variants={staggerContainer(0.08, 0.04)}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, margin: "-80px" }}
-          className="max-w-2xl"
+          viewport={{ once: true, margin: "-60px" }}
+          className="max-w-2xl text-white"
         >
-          <motion.div variants={fadeUp} className="text-micro font-semibold uppercase tracking-[0.18em] text-white/70">
-            Ready when you are
-          </motion.div>
-          <motion.h2
-            variants={fadeUp}
-            className="mt-3 text-[36px] font-semibold leading-tight tracking-tight text-white md:text-[48px]"
-          >
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
+            10 — Ready for the Field
+          </div>
+          <h2 className="mt-3 text-[38px] font-extrabold leading-tight tracking-tight sm:text-[50px]">
             Make every litre count.
-          </motion.h2>
-          <motion.p variants={fadeUp} className="mt-4 max-w-xl text-base leading-relaxed text-white/85">
-            The demo farm&apos;s current recommendation saves 453 L per event — and the optimizer
-            shows where a 2,000 L budget does the most good. Explore the full workspace, no account
-            required.
-          </motion.p>
-          <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-3">
-            <LinkButton href="/dashboard" variant="primary" size="lg" className="group rounded-full">
-              Explore AquaTwin <ArrowRight size={15} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-white/85 sm:text-lg">
+            Turn soil moisture, weather forecasts, and satellite signals into confident, simulated
+            irrigation decisions. Explore the live interactive demo now.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <LinkButton href="/dashboard" variant="primary" size="lg" className="rounded-full shadow-raised">
+              Explore AquaTwin <ArrowRight size={15} className="ml-1" />
             </LinkButton>
             <LinkButton
               href="/login"
               size="lg"
-              className="group rounded-full border border-white/40 bg-white/10 text-white backdrop-blur-md transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out hover:border-white/60 hover:bg-white/20 hover:-translate-y-0.5 active:scale-[0.98]"
+              className="rounded-full border border-white/40 bg-white/10 text-white backdrop-blur-md hover:bg-white/20"
             >
-              View Demo
+              Open Demo
             </LinkButton>
-          </motion.div>
-          <motion.p variants={fadeUp} className="mt-6 text-micro text-white/70">
-            Fully offline prototype · simulated sensor stream · no API keys required
-          </motion.p>
+          </div>
+
+          <div className="mt-8 text-xs text-white/60">
+            Offline-ready prototype · Deterministic demo dataset · No sign-up required
+          </div>
         </motion.div>
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* 8. FOOTER                                                         */
-/* ------------------------------------------------------------------ */
+/* ==================================================================
+   LANDING FOOTER: Editorial, clean, informative
+   ================================================================== */
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-line bg-surface">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 md:flex-row">
-        <div className="flex items-center gap-2.5">
+    <footer className="border-t border-line bg-surface py-12">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 sm:flex-row">
+        <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light">
-            <Droplets size={15} className="text-brand" />
+            <Droplets size={16} className="text-brand" />
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-tight text-ink">AquaTwin</div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-              Irrigation Intelligence
+            <div className="text-sm font-bold text-ink">AquaTwin</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
+              AI Irrigation Intelligence
             </div>
           </div>
         </div>
-        <p className="text-center text-micro text-ink-faint">
-          Simulate the future of your field before using a single drop.
-        </p>
-        <p className="text-micro text-ink-faint">
-          AquaTwin · Team Absolute Cinema · Vishnu College Hackathon
-        </p>
+
+        <div className="text-xs text-ink-muted text-center sm:text-left">
+          &ldquo;We don&apos;t just predict when to irrigate — we simulate the future of the field before using a single drop.&rdquo;
+        </div>
+
+        <div className="text-xs font-semibold text-ink-faint">
+          Vishnu Hackathon Edition
+        </div>
       </div>
     </footer>
   );

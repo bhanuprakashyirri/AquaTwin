@@ -6,65 +6,67 @@ import { Droplets } from "lucide-react";
 import { LandingHero } from "@/components/landing/landing-hero";
 import {
   BudgetSection,
-  DifferenceSection,
-  FingerprintSection,
   FinalCtaSection,
+  FingerprintSection,
+  ImpactSection,
   LandingFooter,
   ProblemSection,
+  ShiftSection,
   TwinSection,
+  WeatherUncertaintySection,
   WhatIfSection,
 } from "@/components/landing/landing-sections";
-import { ScrollProgress } from "@/components/scroll-progress";
-import { VoiceAgentWidget } from "@/components/ui/voice-agent-widget";
 
 export default function LandingPage() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen overflow-x-hidden bg-page">
-        {/* Nav */}
-        <nav className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur">
+        {/* Understated Editorial Navigation */}
+        <nav className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
             <Link href="/" className="group flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-light transition-transform duration-300 ease-out group-hover:-translate-y-0.5">
                 <Droplets size={18} className="text-brand" />
               </div>
               <div>
-                <div className="text-[15px] font-semibold tracking-tight text-ink">AquaTwin</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+                <div className="text-[15px] font-bold tracking-tight text-ink">AquaTwin</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">
                   Irrigation Intelligence
                 </div>
               </div>
             </Link>
-            <div className="hidden items-center gap-1.5 md:flex">
+
+            <div className="hidden items-center gap-6 md:flex">
               <Link
-                href="#how"
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-tight text-ink-soft transition-colors duration-150 hover:bg-subtle hover:text-ink"
+                href="#shift"
+                className="text-xs font-semibold text-ink-soft transition-colors duration-150 hover:text-brand-dark"
               >
                 How It Works
               </Link>
               <Link
                 href="#twin"
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-tight text-ink-soft transition-colors duration-150 hover:bg-subtle hover:text-ink"
+                className="text-xs font-semibold text-ink-soft transition-colors duration-150 hover:text-brand-dark"
               >
                 Field Twin
               </Link>
               <Link
                 href="#what-if"
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-tight text-ink-soft transition-colors duration-150 hover:bg-subtle hover:text-ink"
+                className="text-xs font-semibold text-ink-soft transition-colors duration-150 hover:text-brand-dark"
               >
                 What-If
               </Link>
               <Link
                 href="#budget"
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-tight text-ink-soft transition-colors duration-150 hover:bg-subtle hover:text-ink"
+                className="text-xs font-semibold text-ink-soft transition-colors duration-150 hover:text-brand-dark"
               >
                 Water Budget
               </Link>
             </div>
-            <div className="flex items-center gap-2.5">
+
+            <div className="flex items-center gap-3">
               <Link
                 href="/login"
-                className="hidden rounded-full border border-line bg-surface px-4 py-2 text-xs font-semibold text-ink-soft transition-all duration-150 hover:border-brand/40 hover:bg-subtle hover:text-ink sm:block shadow-sm"
+                className="hidden rounded-full border border-line bg-surface px-4 py-2 text-xs font-bold text-ink-soft transition-all duration-150 hover:border-brand/40 hover:bg-subtle hover:text-ink sm:block shadow-sm"
               >
                 Sign in
               </Link>
@@ -78,16 +80,18 @@ export default function LandingPage() {
           </div>
         </nav>
 
+        {/* The 10 Art-Directed Storytelling Sections */}
         <LandingHero />
         <ProblemSection />
-        <DifferenceSection />
+        <ShiftSection />
         <TwinSection />
         <WhatIfSection />
+        <WeatherUncertaintySection />
         <BudgetSection />
         <FingerprintSection />
+        <ImpactSection />
         <FinalCtaSection />
         <LandingFooter />
-        <VoiceAgentWidget />
       </div>
     </MotionConfig>
   );
