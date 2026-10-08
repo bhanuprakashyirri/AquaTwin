@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
+import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import {
   fetchFieldState,
   fetchSystemStatus,
@@ -73,6 +74,14 @@ export default function SimulatorPage() {
       setTimeout(() => setRunning(false), 250);
     }, 1300);
   };
+
+  // Voice-agent control: "run the simulation" triggers the same flow
+  const runRef = useRef(run);
+  runRef.current = run;
+  useEffect(
+    () => onAgentEvent(AGENT_EVENTS.simulate, () => runRef.current()),
+    [],
+  );
 
   return (
     <div className="mx-auto max-w-[1440px]">

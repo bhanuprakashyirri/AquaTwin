@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { fetchSystemStatus, fetchZones, postOptimize } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { fmtL, stressColor } from "@/lib/format";
@@ -35,6 +36,18 @@ export default function WaterBudgetPage() {
     setAvailable(v);
     setStale(true);
   };
+
+  // Voice-agent control: "optimize water with 1500 litres" sets the budget + runs
+  const runOptimizeRef = useRef(runOptimize);
+  runOptimizeRef.current = runOptimize;
+  useEffect(
+    () =>
+      onAgentEvent<{ amount: number }>(AGENT_EVENTS.optimize, (d) => {
+        setAvailable(d.amount);
+        runOptimizeRef.current(d.amount);
+      }),
+    [],
+  );
 
   const totalNeed = result?.totalNeedL ?? 2700;
   const shortfall = Math.max(0, totalNeed - available);

@@ -28,12 +28,14 @@ import {
 } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { useSensorStream } from "@/hooks/useSensorStream";
+import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { fmtL, stressColor } from "@/lib/format";
 import { FORECAST_48H, FIELD_STATE } from "@/lib/demo-data";
 import type { Zone } from "@/types";
 
 export default function DashboardPage() {
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [layer, setLayer] = useState("moisture");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const zonesQ = useApiData(() => fetchZones("field-a"));
@@ -62,6 +64,27 @@ export default function DashboardPage() {
     const hours = Math.min(...zones.map((z) => z.lastIrrigatedHoursAgo));
     return `${Math.round(hours)}h ago`;
   }, [zones]);
+
+  // Voice-agent site control: map layer, zone selection, data refresh
+  useEffect(
+    () => onAgentEvent<{ layer: string }>(AGENT_EVENTS.layer, (d) => setLayer(d.layer)),
+    [],
+  );
+  useEffect(
+    () => onAgentEvent<{ zoneId: string }>(AGENT_EVENTS.zone, (d) => setSelectedZone(d.zoneId)),
+    [],
+  );
+  useEffect(
+    () =>
+      onAgentEvent(AGENT_EVENTS.refresh, () => {
+        zonesQ.retry();
+        stateQ.retry();
+        recQ.retry();
+        wxQ.retry();
+        statusQ.retry();
+      }),
+    [zonesQ, stateQ, recQ, wxQ, statusQ],
+  );
 
   return (
     <div className="mx-auto max-w-[1440px]">
@@ -100,7 +123,8 @@ export default function DashboardPage() {
           <div className="h-[430px] p-2">
             <FarmMap
               zones={zones}
-              layer="moisture"
+              layer={layer}
+              onLayerChange={setLayer}
               selectedZoneId={selectedZone}
               onZoneSelect={(id) => setSelectedZone(id === selectedZone ? null : id)}
               sensors={stream.sensors}

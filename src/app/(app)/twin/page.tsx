@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CloudRain, Droplets, RefreshCcw, Sprout, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -8,6 +8,7 @@ import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button, LinkButton } from "@/components/ui/button";
 import { FarmMap } from "@/components/maps/farm-map";
 import { WhyDrawer } from "@/components/ui/assistant";
+import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { fetchField, fetchFieldState, fetchSystemStatus, fetchZones } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { useSensorStream } from "@/hooks/useSensorStream";
@@ -25,6 +26,16 @@ export default function TwinPage() {
   const [selectedZone, setSelectedZone] = useState<string | null>("zone-b");
   const [layer, setLayer] = useState("moisture");
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Voice-agent site control: map layer + zone selection
+  useEffect(
+    () => onAgentEvent<{ layer: string }>(AGENT_EVENTS.layer, (d) => setLayer(d.layer)),
+    [],
+  );
+  useEffect(
+    () => onAgentEvent<{ zoneId: string }>(AGENT_EVENTS.zone, (d) => setSelectedZone(d.zoneId)),
+    [],
+  );
 
   const zonesQ = useApiData(() => fetchZones("field-a"));
   const stateQ = useApiData(() => fetchFieldState("field-a"));
