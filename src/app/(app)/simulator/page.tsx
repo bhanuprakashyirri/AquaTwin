@@ -153,7 +153,7 @@ export default function SimulatorPage() {
                     {STRATEGIES.map((b) => (
                       <div
                         key={b.key}
-                        className="rounded-lg border border-line bg-subtle px-2 py-2 text-center text-tiny text-ink-soft transition-colors duration-150 hover:border-[#C3D4CA] hover:text-ink"
+                        className="rounded-full border border-line bg-subtle px-3 py-1.5 text-center text-tiny text-ink-soft transition-colors duration-150 hover:border-[#C3D4CA] hover:text-ink"
                       >
                         {b.label}
                       </div>

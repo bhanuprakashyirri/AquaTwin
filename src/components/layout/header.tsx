@@ -17,7 +17,7 @@ export function Header() {
       <div className="flex min-w-0 items-center gap-3">
         {/* Mobile menu */}
         <button
-          className="rounded-lg p-2 text-ink-soft hover:bg-subtle lg:hidden"
+          className="rounded-full p-2 text-ink-soft hover:bg-subtle lg:hidden"
           aria-label="Open navigation"
           data-mobile-menu
           onClick={() => document.dispatchEvent(new CustomEvent("aquatwin:toggle-sidebar"))}
@@ -26,7 +26,7 @@ export function Header() {
         </button>
 
         <div className="flex min-w-0 items-center gap-2.5 text-sm">
-          <span className="truncate font-medium text-ink">Kisan Bhimavaram Demo Farm</span>
+          <span className="truncate font-semibold text-ink">Bhimavaram Demo Farm</span>
           <span className="hidden h-4 w-px bg-line sm:block" />
           <span className="hidden truncate text-ink-muted sm:inline">North Plot</span>
           <span className="hidden h-4 w-px bg-line sm:block" />
@@ -34,8 +34,8 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="hidden items-center gap-1.5 rounded-lg border border-line bg-subtle px-2.5 py-1.5 text-tiny text-ink-soft sm:flex">
+      <div className="flex items-center gap-2.5">
+        <div className="hidden items-center gap-1.5 rounded-full border border-line bg-subtle px-3 py-1.5 text-tiny text-ink-soft sm:flex">
           <CloudRain size={13} className="text-info" />
           <span className="font-semibold text-ink">{rain ? `${rain.rainProbabilityPct}%` : "10%"}</span>
           rain in {rain ? FORECAST_48H.indexOf(rain) : 7}h
@@ -47,19 +47,19 @@ export function Header() {
             onClick={() => { setNotifOpen(!notifOpen); setMenuOpen(false); }}
             aria-label="Notifications"
             aria-expanded={notifOpen}
-            className="relative rounded-lg border border-line bg-surface p-2 text-ink-soft transition-colors hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            className="relative rounded-full border border-line bg-surface p-2 text-ink-soft transition-colors hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             <Bell size={16} />
             <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-warning" />
           </button>
           {notifOpen ? (
-            <div className="absolute right-0 top-11 z-50 w-80 rounded-xl2 border border-line bg-surface p-3 shadow-pop">
+            <div className="absolute right-0 top-11 z-50 w-80 rounded-2xl border border-line bg-surface p-3 shadow-pop">
               <div className="mb-2 text-tiny font-semibold text-ink">Notifications</div>
               <div className="space-y-2 text-tiny text-ink-soft">
-                <div className="rounded-lg border border-line bg-subtle p-2.5">
+                <div className="rounded-xl border border-line bg-subtle p-2.5">
                   <span className="font-medium text-ink">Rain expected in 7h</span> — 70% probability. The recommendation re-evaluates automatically.
                 </div>
-                <div className="rounded-lg border border-line bg-subtle p-2.5">
+                <div className="rounded-xl border border-line bg-subtle p-2.5">
                   <span className="font-medium text-ink">Zone B stress risk 22%</span> — highest priority in the water budget.
                 </div>
               </div>
@@ -77,7 +77,7 @@ export function Header() {
             onClick={() => { setMenuOpen(!menuOpen); setNotifOpen(false); }}
             aria-label="User menu"
             aria-expanded={menuOpen}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-tiny font-semibold text-brand-dark transition-colors hover:bg-[#DCEBE2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-light to-[#DCEBE2] text-tiny font-bold text-brand-dark transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 shadow-sm"
           >
             RK
           </button>

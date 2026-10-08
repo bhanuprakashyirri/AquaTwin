@@ -158,7 +158,7 @@ export default function DashboardPage() {
               <span className="text-ink-muted">Stress <span className="font-semibold" style={{ color: stressColor(zone.stressRiskPct) }}>{zone.stressRiskPct}%</span></span>
               <span className="text-ink-muted">Need <span className="font-semibold text-ink">{fmtL(zone.waterRequirementL)}</span></span>
               <span className="text-ink-muted">{zone.soilType}</span>
-              <Link href="/twin" className="ml-auto inline-flex items-center gap-1 font-medium text-brand hover:text-brand-dark">
+              <Link href="/twin" className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-tiny font-medium text-brand transition-all hover:border-brand/40 hover:bg-brand-light hover:-translate-y-0.5 shadow-sm">
                 Open Field Twin <ArrowRight size={12} />
               </Link>
             </motion.div>

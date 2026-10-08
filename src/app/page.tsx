@@ -15,6 +15,7 @@ import {
   WhatIfSection,
 } from "@/components/landing/landing-sections";
 import { ScrollProgress } from "@/components/scroll-progress";
+import { VoiceAgentWidget } from "@/components/ui/voice-agent-widget";
 
 export default function LandingPage() {
   return (
@@ -86,6 +87,7 @@ export default function LandingPage() {
         <FingerprintSection />
         <FinalCtaSection />
         <LandingFooter />
+        <VoiceAgentWidget />
       </div>
     </MotionConfig>
   );

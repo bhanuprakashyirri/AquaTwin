@@ -5,6 +5,7 @@ import { MotionConfig } from "framer-motion";
 import { Sidebar, MobileSidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { VoiceAgentWidget } from "@/components/ui/voice-agent-widget";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -29,6 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
         <MobileNav onMore={() => setMobileOpen(true)} />
+        <VoiceAgentWidget />
       </div>
     </MotionConfig>
   );
