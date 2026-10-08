@@ -70,8 +70,10 @@ export default function TwinPage() {
                 key={k}
                 onClick={() => setLayer(k)}
                 aria-pressed={layer === k}
-                className={`rounded-md px-2.5 py-1 text-tiny font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-                  layer === k ? "bg-brand-light text-brand-dark" : "text-ink-muted hover:bg-subtle hover:text-ink"
+                className={`rounded-full px-3.5 py-1 text-tiny font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                  layer === k
+                    ? "bg-brand text-white shadow-card"
+                    : "text-ink-muted hover:bg-subtle hover:text-ink"
                 }`}
               >
                 {label}

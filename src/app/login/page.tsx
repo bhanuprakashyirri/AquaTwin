@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, CloudRain, Droplets, Eye, EyeOff, Lock, Mail, Sprout } from "lucide-react";
-import { MorningMistScene } from "@/components/imagery/field-scenes";
+import Image from "next/image";
 import { EASE, fadeUp, riseUp, staggerContainer, successReveal } from "@/lib/motion";
 
 type Phase = "idle" | "loading" | "success";
@@ -58,18 +58,25 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-page">
-      {/* LEFT — visual panel */}
-      <div className="relative hidden w-[46%] overflow-hidden lg:block">
+      {/* LEFT — visual panel with authentic Indian agricultural sunrise photography */}
+      <div className="relative hidden w-[48%] overflow-hidden lg:block">
         <motion.div
-          initial={{ opacity: 0, scale: 1.04 }}
+          initial={{ opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.4, ease: EASE }}
           className="absolute inset-0"
         >
-          <MorningMistScene className="h-full w-full" />
+          <Image
+            src="/images/login_sunrise.jpg"
+            alt="Sunrise over Indian rice farm with irrigation channel"
+            fill
+            priority
+            sizes="50vw"
+            className="object-cover"
+          />
         </motion.div>
-        {/* readability gradient — subtle, only where the message sits */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#17352D]/55 via-[#17352D]/10 to-transparent" />
+        {/* Soft gradient overlay for high editorial readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/90 via-[#163A31]/30 to-transparent" />
 
         <motion.div
           variants={staggerContainer(0.1, 0.3)}
@@ -78,7 +85,7 @@ export default function LoginPage() {
           className="absolute inset-x-0 bottom-0 p-12"
         >
           <motion.div variants={fadeUp} className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md">
               <Droplets size={22} className="text-white" />
             </div>
             <div>
@@ -89,16 +96,16 @@ export default function LoginPage() {
             </div>
           </motion.div>
           <motion.blockquote variants={fadeUp} className="mt-8 max-w-md">
-            <p className="text-[22px] font-medium leading-snug tracking-tight text-white">
+            <p className="text-[24px] font-semibold leading-snug tracking-tight text-white">
               &ldquo;A smarter way to decide when water should flow.&rdquo;
             </p>
-            <footer className="mt-3 flex items-center gap-2 text-sm text-white/75">
-              <Sprout size={14} />
+            <footer className="mt-3 flex items-center gap-2 text-sm text-white/80">
+              <Sprout size={15} />
               Field digital twin · What-if simulation · Water budget optimization
             </footer>
           </motion.blockquote>
-          <motion.div variants={fadeUp} className="mt-8 flex items-center gap-2 text-tiny text-white/60">
-            <CloudRain size={13} />
+          <motion.div variants={fadeUp} className="mt-8 flex items-center gap-2 text-tiny text-white/70">
+            <CloudRain size={14} />
             Simulated demo farm · Bhimavaram, Andhra Pradesh
           </motion.div>
         </motion.div>
@@ -272,11 +279,11 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={phase !== "idle"}
-              className={`relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-lg text-sm font-semibold transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1 active:scale-[0.985] ${
+              className={`group relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-full text-sm font-semibold transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1 hover:-translate-y-0.5 active:scale-[0.985] active:translate-y-0 ${
                 phase === "success"
-                  ? "bg-success text-white"
+                  ? "bg-success text-white shadow-raised"
                   : "bg-brand text-white hover:bg-brand-dark hover:shadow-raised"
-              } disabled:pointer-events-none`}
+              } disabled:pointer-events-none cursor-pointer`}
             >
               <AnimatePresence mode="wait" initial={false}>
                 {phase === "idle" && (
@@ -288,7 +295,7 @@ export default function LoginPage() {
                     transition={{ duration: 0.18, ease: EASE }}
                     className="flex items-center gap-2"
                   >
-                    Sign in <ArrowRight size={15} />
+                    Sign in <ArrowRight size={15} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
                   </motion.span>
                 )}
                 {phase === "loading" && (
@@ -328,7 +335,7 @@ export default function LoginPage() {
             variants={fadeUp}
             onClick={enterDemo}
             disabled={phase !== "idle"}
-            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#BFDCCB] bg-surface text-sm font-medium text-brand-dark transition-[background-color,border-color,transform] duration-200 ease-out hover:bg-brand-light hover:border-[#A9C8B8] hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-[0.985] disabled:pointer-events-none"
+            className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface text-sm font-medium text-ink transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-light/70 hover:border-brand/40 hover:text-brand-dark hover:shadow-card hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-[0.985] active:translate-y-0 disabled:pointer-events-none cursor-pointer"
           >
             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
               <path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.26-2.09 3.57-5.16 3.57-8.81z"/>
@@ -340,7 +347,7 @@ export default function LoginPage() {
           </motion.button>
 
           {/* Demo access — the hackathon path */}
-          <motion.div variants={fadeUp} className="mt-6 rounded-xl2 border border-line bg-subtle p-4">
+          <motion.div variants={fadeUp} className="mt-6 rounded-2xl border border-line bg-subtle p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-ink">Demo access</div>
@@ -351,7 +358,7 @@ export default function LoginPage() {
               <button
                 onClick={enterDemo}
                 disabled={phase !== "idle"}
-                className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-tiny font-semibold text-white transition-[background-color,transform] duration-200 ease-out hover:bg-brand-dark hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-95 disabled:pointer-events-none"
+                className="shrink-0 rounded-full bg-brand px-4 py-2 text-tiny font-semibold text-white transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-dark hover:shadow-raised hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-95 disabled:pointer-events-none cursor-pointer"
               >
                 Enter demo
               </button>

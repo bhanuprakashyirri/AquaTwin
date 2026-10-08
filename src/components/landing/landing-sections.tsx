@@ -35,7 +35,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CropDetailScene, GoldenHourScene, HealthyScene, StressScene, WaterloggedScene, WeatherScene } from "@/components/imagery/field-scenes";
+import Image from "next/image";
 import { LinkButton } from "@/components/ui/button";
 import { DemoPill } from "@/components/ui/panel";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
@@ -85,25 +85,29 @@ function CountUp({ to, suffix = "", decimals = 0, play }: { to: number; suffix?:
 
 const PROBLEMS = [
   {
-    scene: WaterloggedScene,
+    image: "/images/landing_hero.jpg",
+    alt: "Over-irrigation in rice paddies",
     k: "Over-irrigation",
     v: "Water the crop never uses",
     stat: "up to 35% wasted",
   },
   {
-    scene: StressScene,
+    image: "/images/water_stress.jpg",
+    alt: "Paddy crop experiencing soil moisture stress",
     k: "Under-irrigation",
     v: "Zones drift past the refill point",
     stat: "yield loss compounds",
   },
   {
-    scene: WeatherScene,
+    image: "/images/field_before_rain.jpg",
+    alt: "Approaching rain clouds over agricultural fields",
     k: "Uncertain rainfall",
     v: "Watering hours before rain arrives",
     stat: "70% rain ignored",
   },
   {
-    scene: HealthyScene,
+    image: "/images/optimized_irrigation.jpg",
+    alt: "Optimized water flow through paddy channel",
     k: "The resolution",
     v: "Optimized irrigation, zone by zone",
     stat: "453 L saved / event",
@@ -151,11 +155,17 @@ export function ProblemSection() {
               }`}
             >
               <div className="relative aspect-[5/4] overflow-hidden">
-                <p.scene className="h-full w-full transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#17352D]/45 via-transparent to-transparent" />
+                <Image
+                  src={p.image}
+                  alt={p.alt}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/85 via-[#163A31]/25 to-transparent" />
                 <figcaption className="absolute inset-x-0 bottom-0 p-4">
                   <div className="text-sm font-semibold text-white">{p.k}</div>
-                  <div className="mt-0.5 text-tiny text-white/80">{p.v}</div>
+                  <div className="mt-0.5 text-tiny text-white/90">{p.v}</div>
                 </figcaption>
               </div>
               <div className="flex items-center justify-between border-t border-line px-4 py-3">
@@ -746,9 +756,19 @@ export function FingerprintSection() {
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-40px" }}
-        className="mt-16 overflow-hidden rounded-xl2 border border-line shadow-card"
+        className="relative mt-16 aspect-[21/8] overflow-hidden rounded-2xl border border-line shadow-card"
       >
-        <CropDetailScene className="aspect-[8/3] w-full" />
+        <Image
+          src="/images/optimized_irrigation.jpg"
+          alt="Controlled irrigation channel flowing through Indian rice paddy fields"
+          fill
+          sizes="100vw"
+          className="object-cover transition-transform duration-700 ease-out hover:scale-[1.02]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/70 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute bottom-4 left-6 rounded-full border border-line bg-white/95 px-3 py-1 text-micro font-medium text-ink-soft shadow-card backdrop-blur-md">
+          Continuous Calibration · Every irrigation cycle refines predictive soil response
+        </div>
       </motion.div>
     </section>
   );
@@ -761,8 +781,16 @@ export function FingerprintSection() {
 export function FinalCtaSection() {
   return (
     <section className="relative overflow-hidden">
-      <GoldenHourScene className="absolute inset-0 h-full w-full" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#17352D]/70 via-[#17352D]/45 to-[#17352D]/25" />
+      <div className="absolute inset-0">
+        <Image
+          src="/images/login_sunrise.jpg"
+          alt="Golden hour sunrise over South Indian rice farmland"
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#163A31]/90 via-[#163A31]/80 to-[#163A31]/60" />
+      </div>
       <div className="relative mx-auto max-w-7xl px-6 py-28">
         <motion.div
           variants={staggerContainer(0.09)}
@@ -786,18 +814,18 @@ export function FinalCtaSection() {
             required.
           </motion.p>
           <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-3">
-            <LinkButton href="/dashboard" variant="primary" size="lg" className="group">
-              Explore AquaTwin <ArrowRight size={15} className="icon-nudge" />
+            <LinkButton href="/dashboard" variant="primary" size="lg" className="group rounded-full">
+              Explore AquaTwin <ArrowRight size={15} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
             </LinkButton>
             <LinkButton
               href="/login"
               size="lg"
-              className="group border-white/40 bg-white/10 text-white backdrop-blur transition-[background-color,border-color,transform] duration-200 ease-out hover:border-white/60 hover:bg-white/20 active:scale-[0.98]"
+              className="group rounded-full border border-white/40 bg-white/10 text-white backdrop-blur-md transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out hover:border-white/60 hover:bg-white/20 hover:-translate-y-0.5 active:scale-[0.98]"
             >
               View Demo
             </LinkButton>
           </motion.div>
-          <motion.p variants={fadeUp} className="mt-6 text-micro text-white/60">
+          <motion.p variants={fadeUp} className="mt-6 text-micro text-white/70">
             Fully offline prototype · simulated sensor stream · no API keys required
           </motion.p>
         </motion.div>

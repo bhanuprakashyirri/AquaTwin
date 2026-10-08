@@ -48,7 +48,7 @@ const STRATEGIES = [
   { key: "partial", label: "Partial irrigation" },
 ];
 
-const PROGRESS_STEPS = ["Preparing field state", "Simulating scenarios", "Comparing outcomes", "Decision ready"];
+const PROGRESS_STEPS = ["Preparing field state", "Projecting future conditions", "Comparing outcomes", "Decision ready"];
 
 export default function SimulatorPage() {
   const stateQ = useApiData(() => fetchFieldState("field-a"));

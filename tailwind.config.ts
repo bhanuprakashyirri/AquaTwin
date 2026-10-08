@@ -11,26 +11,27 @@ const config: Config = {
         subtle: "#F0F4F1",
         // Text
         ink: {
-          DEFAULT: "#17352D",
-          soft: "#42544C",
-          muted: "#68776F",
-          faint: "#8A988F",
+          DEFAULT: "#163A31",
+          soft: "#3F564E",
+          muted: "#60746C",
+          faint: "#8A9A92",
         },
         // Brand greens
         brand: {
-          DEFAULT: "#2F6B58",
-          dark: "#1D493D",
-          light: "#EAF3EE",
-          mid: "#3E8168",
+          DEFAULT: "#28745F",
+          dark: "#1C5143",
+          light: "#E8F2ED",
+          mid: "#32836D",
         },
         // Status
-        success: "#2E7D5B",
-        warning: "#B47A19",
-        danger: "#C84C4C",
-        info: "#4D7EA8",
+        success: "#28745F",
+        warning: "#B98227",
+        danger: "#C45A55",
+        info: "#537D9B",
         // Borders
-        line: "#DFE7E2",
-        "line-strong": "#C9D6CE",
+        line: "#DDE6E1",
+        "line-strong": "#CBD7D0",
+
       },
       fontSize: {
         micro: ["0.6875rem", { lineHeight: "1rem" }],

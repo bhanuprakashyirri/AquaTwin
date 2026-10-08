@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CloudRain, Droplets, Map as MapIcon } from "lucide-react";
-import { AerialFieldScene } from "@/components/imagery/field-scenes";
+import Image from "next/image";
 import { LinkButton } from "@/components/ui/button";
 import { DemoPill } from "@/components/ui/panel";
 import { AnimatedValue } from "@/components/ui/animated-value";
@@ -116,9 +116,17 @@ export function LandingHero() {
             </motion.div>
 
             {/* aerial scene frame */}
-            <div className="relative overflow-hidden rounded-2xl border border-line shadow-raised">
-              <AerialFieldScene className="aspect-[4/3] w-full" />
-              <div className="absolute left-4 top-4 rounded-md border border-line bg-white/90 px-2.5 py-1 text-micro font-medium text-ink-soft shadow-card backdrop-blur">
+            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-line shadow-raised">
+              <Image
+                src="/images/landing_hero.jpg"
+                alt="Cinematic aerial photograph of Indian rice fields with irrigation channels in Bhimavaram, Andhra Pradesh"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover transition-transform duration-700 ease-out hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#163A31]/50 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute left-4 top-4 rounded-full border border-line bg-white/95 px-3 py-1 text-micro font-medium text-ink-soft shadow-card backdrop-blur-md">
                 North Plot · 10 ha · Rice
               </div>
             </div>
@@ -128,7 +136,7 @@ export function LandingHero() {
               initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: EASE, delay: 0.45 }}
-              className="relative z-10 -mx-4 mt-[-52px] rounded-xl2 border border-line bg-surface shadow-pop sm:mx-8"
+              className="relative z-10 -mx-4 mt-[-44px] rounded-2xl border border-line bg-surface shadow-pop sm:mx-6"
             >
               <div className="flex items-center justify-between border-b border-line px-5 py-3">
                 <div className="text-tiny font-medium text-ink-muted">Farm Overview — Kisan Bhimavaram Demo Farm</div>

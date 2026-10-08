@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Info } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
@@ -60,8 +60,8 @@ export default function WaterBudgetPage() {
         actions={
           <div className="flex items-center gap-2">
             <DemoPill />
-            <Button variant="primary" loading={optimizing} onClick={() => runOptimize(available)}>
-              {stale ? "Run optimization" : "Optimized"}
+            <Button variant="primary" loading={optimizing} onClick={() => runOptimize(available)} className="group">
+              Optimize Water <ArrowRight size={14} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
             </Button>
           </div>
         }
@@ -113,7 +113,7 @@ export default function WaterBudgetPage() {
                       setAvailable(p);
                       runOptimize(p);
                     }}
-                    className={`rounded-md border px-2.5 py-1 text-tiny font-medium transition-[background-color,border-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                    className={`rounded-full border px-3 py-1 text-tiny font-medium transition-[background-color,border-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                       available === p ? "border-brand bg-brand-light text-brand-dark" : "border-line text-ink-muted hover:bg-subtle"
                     }`}
                   >

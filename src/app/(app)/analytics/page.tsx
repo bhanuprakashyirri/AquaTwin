@@ -8,6 +8,7 @@ import {
   ComposedChart,
   Legend,
   Line,
+  LineChart,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
@@ -50,7 +51,8 @@ export default function AnalyticsPage() {
     let m = 27;
     return Array.from(buckets.values()).map((b) => {
       m = Math.max(19, m - 0.6 + (b.rain > 2 ? 2.2 : 0));
-      return { ...b, moisture: Math.round(m * 10) / 10, rain: Math.round(b.rain * 10) / 10 };
+      const s = Math.round(Math.max(3.5, (34 - m) * 1.45) * 10) / 10;
+      return { ...b, moisture: Math.round(m * 10) / 10, stress: s, rain: Math.round(b.rain * 10) / 10 };
     });
   }, [histQ.data]);
 
@@ -122,8 +124,55 @@ export default function AnalyticsPage() {
         <KpiCard index={3} label="Rainfall (7 days)" value={`${daily.reduce((s, d) => s + d.rain, 0).toFixed(0)} mm`} sub="≈80% effective" />
       </div>
 
-      {/* Editorial chart sections — fewer, larger */}
+      {/* Editorial chart sections — fewer, larger with one-line interpretation */}
       <div className="mt-6 space-y-6">
+        {/* 1. Soil moisture */}
+        <section>
+          <h2 className="text-[17px] font-semibold text-ink">Soil moisture</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            Root-zone moisture remained stable between 21.8% and 27.2%, comfortably above the 14% wilting point.
+          </p>
+          <Panel className="mt-3">
+            <div className="p-4">
+              <div style={{ height: 250 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={daily} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
+                    <CartesianGrid stroke={CHART.grid} vertical={false} />
+                    <XAxis dataKey="day" {...AXIS_STYLE} />
+                    <YAxis domain={[15, 35]} tickFormatter={(v) => `${v}%`} {...AXIS_STYLE} />
+                    <ChartTooltip formatter={(v) => `${v}%`} />
+                    <Line dataKey="moisture" name="Root-zone moisture" stroke={CHART.recommended} strokeWidth={2.5} dot={{ r: 3.5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Panel>
+        </section>
+
+        {/* 2. Crop stress */}
+        <section>
+          <h2 className="text-[17px] font-semibold text-ink">Crop stress</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            Crop stress stayed safely below the 15% threshold throughout the week, peaking briefly before scheduled watering.
+          </p>
+          <Panel className="mt-3">
+            <div className="p-4">
+              <div style={{ height: 250 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={daily} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
+                    <CartesianGrid stroke={CHART.grid} vertical={false} />
+                    <XAxis dataKey="day" {...AXIS_STYLE} />
+                    <YAxis domain={[0, 25]} tickFormatter={(v) => `${v}%`} {...AXIS_STYLE} />
+                    <ChartTooltip formatter={(v) => `${v}%`} />
+                    <Line dataKey="stress" name="Crop stress risk" stroke={CHART.risk} strokeWidth={2.5} dot={{ r: 3.5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Panel>
+        </section>
+
+        {/* 3. Water use */}
         <section>
           <h2 className="text-[17px] font-semibold text-ink">Water use</h2>
           <p className="mt-0.5 text-sm text-ink-muted">
@@ -131,7 +180,7 @@ export default function AnalyticsPage() {
           </p>
           <Panel className="mt-3">
             <div className="p-4">
-              <div style={{ height: 240 }}>
+              <div style={{ height: 250 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={daily} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
                     <CartesianGrid stroke={CHART.grid} vertical={false} />

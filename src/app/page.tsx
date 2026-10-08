@@ -69,7 +69,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition-[background-color,box-shadow,transform] duration-200 ease-out hover:bg-brand-dark hover:shadow-raised active:scale-[0.98]"
+                className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition-[background-color,box-shadow,transform] duration-200 ease-out hover:bg-brand-dark hover:shadow-raised hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0"
               >
                 Open Demo
               </Link>
