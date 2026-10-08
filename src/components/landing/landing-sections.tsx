@@ -372,9 +372,9 @@ export function TwinSection() {
                   key={l.key}
                   onClick={() => setLayer(l.key)}
                   aria-pressed={layer === l.key}
-                  className={`rounded-md border px-2.5 py-1 text-tiny font-medium transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                  className={`rounded-full border px-3.5 py-1 text-tiny font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-95 ${
                     layer === l.key
-                      ? "border-brand bg-brand-light text-brand-dark"
+                      ? "border-brand bg-brand-light text-brand-dark shadow-sm"
                       : "border-line bg-surface text-ink-muted hover:bg-subtle hover:text-ink"
                   }`}
                 >
