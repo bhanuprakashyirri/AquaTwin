@@ -1,245 +1,272 @@
 "use client";
 
 /**
- * Editorial Landing Hero — Precision AgriTech Twin Console.
- * Seamless, balanced composition:
- * - Editorial headline with Plus Jakarta Sans typography
- * - Integrated GIS Digital Twin console viewport (no chaotic clipping stickers)
- * - Real telemetry HUD: Live Root-Zone moisture, 48h rain forecast, optimized action
+ * AquaTwin — Cinematic Editorial Hero
+ *
+ * Art direction principles:
+ * - Full-bleed immersive agricultural backdrop (100vh)
+ * - Dark atmospheric overlay anchored to the bottom, letting sky breathe at top
+ * - Headline cuts across the image edge — breaking out of the "card" paradigm
+ * - Real Field Intelligence HUD with live telemetry drift
+ * - Strict pill buttons, no box-button softness
+ * - Animated scroll-down cue
  */
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+// next/image not needed — background is a video
 import { motion } from "framer-motion";
 import {
-  Activity,
   ArrowRight,
-  CheckCircle2,
-  CloudRain,
   Droplets,
-  Layers,
   MapPin,
   Radio,
   Sparkles,
   Sprout,
 } from "lucide-react";
-import { LinkButton } from "@/components/ui/button";
-import { EASE, fadeUp, riseUp, staggerContainer } from "@/lib/motion";
+import { AquaLink } from "@/components/ui/aqua-button";
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 28, filter: "blur(4px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
+const stagger = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
+  },
+};
 
 export function LandingHero() {
-  const [moisture, setMoisture] = useState(24.6);
-  const [pulse, setPulse] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Subtle telemetry drift
+  // Ensure video plays on mount (some browsers need an explicit call)
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setMoisture((prev) => {
-        const delta = (Math.random() - 0.48) * 0.2;
-        return Math.round(Math.min(27.0, Math.max(22.5, prev + delta)) * 10) / 10;
+    const v = videoRef.current;
+    if (v) {
+      v.muted = true;
+      v.play().catch(() => {
+        // Silently ignore autoplay policy blocks
       });
-      setPulse(true);
-      setTimeout(() => setPulse(false), 800);
-    }, 3600);
-    return () => window.clearInterval(interval);
+    }
+  }, []);
+  const [moisture, setMoisture] = useState(24.9);
+  const [temp, setTemp] = useState(31.4);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const iv = window.setInterval(() => {
+      setMoisture((p) => Math.round(Math.min(26.8, Math.max(23.2, p + (Math.random() - 0.48) * 0.18)) * 10) / 10);
+      setTemp((p) => Math.round(Math.min(33.2, Math.max(29.8, p + (Math.random() - 0.5) * 0.3)) * 10) / 10);
+      setTick((t) => t + 1);
+    }, 3800);
+    return () => window.clearInterval(iv);
   }, []);
 
   return (
-    <section className="relative overflow-hidden border-b border-line bg-page">
-      {/* Soft ambient atmospheric radiance */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 right-[-5%] h-[580px] w-[700px] rounded-full bg-brand-light/50 blur-3xl"
-      />
+    <section className="relative flex min-h-screen flex-col overflow-hidden bg-[#0A1F18]">
+      {/* ── FULL-BLEED VIDEO BACKGROUND ── */}
+      <div className="absolute inset-0 z-0">
+        {/* Hero video — full brightness, let overlays handle dimming */}
+        <video
+          ref={videoRef}
+          src="/hero.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          style={{ opacity: 0.9 }}
+        />
 
-      <div className="mx-auto max-w-7xl px-6 pb-20 pt-12 md:pb-28 md:pt-16 lg:pt-20">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-          {/* Left Column: Editorial Headline & Value Narrative */}
-          <motion.div
-            variants={staggerContainer(0.08, 0.04)}
-            initial="hidden"
-            animate="show"
-            className="relative z-10 max-w-2xl"
-          >
-            {/* Precision Eyebrow Badge */}
+        {/* Minimal tint: just enough to ensure text readability */}
+        {/* Gentle base dark — does NOT wash out the video */}
+        <div className="absolute inset-0 bg-[#0A1F18]/25" />
+        {/* Bottom gradient — darkens only the lower third where text lives */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0A1F18]/30 to-[#0A1F18]/85" />
+        {/* Left vignette — keeps headline copy legible */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A1F18]/70 via-[#0A1F18]/30 to-transparent" />
+      </div>
+
+      {/* ── HERO CONTENT ── */}
+      <div className="relative z-10 flex flex-1 items-end pb-16 sm:pb-20 lg:pb-24">
+        <div className="mx-auto w-full max-w-7xl px-6">
+          <div className="grid grid-cols-1 items-end gap-10 lg:grid-cols-[1fr_420px] lg:gap-16">
+
+            {/* Left: Editorial Statement */}
             <motion.div
-              variants={fadeUp}
-              className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-brand shadow-card"
+              variants={stagger}
+              initial="hidden"
+              animate="show"
             >
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-              </span>
-              AI Irrigation Optimizer · Field Digital Twin
+              {/* Eyebrow — minimal, technical */}
+              <motion.div
+                variants={fadeUp}
+                className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 backdrop-blur-sm"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-200">
+                  AI Irrigation Intelligence · Field Digital Twin
+                </span>
+              </motion.div>
+
+              {/* Main Headline — large, editorial, brand-emphasized split */}
+              <motion.h1
+                variants={fadeUp}
+                className="mt-7 text-[48px] font-extrabold leading-[1.03] tracking-[-0.04em] text-white sm:text-[60px] lg:text-[72px]"
+              >
+                Simulate the future
+                <br />
+                of your field
+                <br />
+                <span className="bg-gradient-to-r from-emerald-300 to-[#5ECFB0] bg-clip-text text-transparent">
+                  before using a drop.
+                </span>
+              </motion.h1>
+
+              {/* Supporting copy */}
+              <motion.p
+                variants={fadeUp}
+                className="mt-6 max-w-[560px] text-base leading-[1.7] text-white/70 sm:text-lg"
+              >
+                AquaTwin is the first irrigation intelligence platform that creates a living digital twin
+                of your field — testing every irrigation scenario against real soil physics before
+                releasing water.
+              </motion.p>
+
+              {/* Primary CTAs — unified AquaLink button system */}
+              <motion.div
+                variants={fadeUp}
+                className="mt-8 flex flex-wrap items-center gap-3.5"
+              >
+                {/* Primary: Explore Live Demo */}
+                <AquaLink href="/dashboard" variant="primary" size="lg">
+                  Explore Live Demo
+                  <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                </AquaLink>
+
+                {/* Secondary: How It Works — glassmorphism with gaussian blur */}
+                <AquaLink href="#shift" variant="glass-on-dark" size="lg">
+                  How It Works
+                </AquaLink>
+
+                {/* Accent: Live Telemetry status pill — glassmorphic */}
+                <AquaLink href="/dashboard" variant="glass-on-dark" size="sm">
+                  <Radio size={11} className="animate-pulse text-emerald-300" />
+                  Live Telemetry · 4 Sensors
+                </AquaLink>
+              </motion.div>
+
+              {/* Field metadata strip */}
+              <motion.div
+                variants={fadeUp}
+                className="mt-10 flex flex-wrap items-center gap-6 border-t border-white/10 pt-6"
+              >
+                <span className="flex items-center gap-1.5 text-xs font-medium text-white/55">
+                  <MapPin size={12} className="text-emerald-400" /> Bhimavaram, AP · 10 ha
+                </span>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-white/55">
+                  <Sprout size={12} className="text-emerald-400" /> Rice · MTU-7029 · Kharif
+                </span>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-white/55">
+                  <Droplets size={12} className="text-emerald-400" /> 453 L saved / event
+                </span>
+              </motion.div>
             </motion.div>
 
-            {/* Editorial Headline */}
-            <motion.h1
-              variants={fadeUp}
-              className="mt-6 text-[40px] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink sm:text-[52px] lg:text-[60px]"
-            >
-              Simulate the future of your field{" "}
-              <span className="text-brand">before using a single drop.</span>
-            </motion.h1>
-
-            {/* Supporting Copy */}
-            <motion.p
-              variants={fadeUp}
-              className="mt-6 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg"
-            >
-              AI-powered irrigation intelligence combining soil physics, 48-hour weather forecasts,
-              satellite-derived signals, and historical response — a living digital twin that tests every
-              decision before opening a valve.
-            </motion.p>
-
-            {/* Primary Action Buttons */}
-            <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-3.5">
-              <LinkButton href="/dashboard" variant="primary" size="lg" className="group shadow-raised">
-                Explore Demo <ArrowRight size={15} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
-              </LinkButton>
-              <LinkButton href="#shift" variant="secondary" size="lg">
-                How It Works
-              </LinkButton>
-              <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink-soft">
-                <Radio size={12} className="text-success animate-pulse" />
-                Live Sensor Telemetry
-              </div>
-            </motion.div>
-
-            {/* Technical Metadata Bar */}
+            {/* Right: Field Intelligence HUD */}
             <motion.div
-              variants={fadeUp}
-              className="mt-10 flex flex-wrap items-center gap-6 border-t border-line/80 pt-6 text-xs text-ink-muted"
+              initial={{ opacity: 0, y: 40, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.85, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
-              <span className="flex items-center gap-1.5 font-medium text-ink-soft">
-                <MapPin size={13} className="text-brand" /> Bhimavaram, AP (10 ha)
-              </span>
-              <span className="flex items-center gap-1.5 font-medium text-ink-soft">
-                <Sprout size={13} className="text-brand" /> Rice · MTU-7029
-              </span>
-              <span className="flex items-center gap-1.5 font-medium text-ink-soft">
-                <Droplets size={13} className="text-brand" /> 453 L saved / event
-              </span>
-            </motion.div>
-          </motion.div>
-
-          {/* Right Column: Precision Digital Twin Workstation Console */}
-          <motion.div
-            variants={riseUp}
-            initial="hidden"
-            animate="show"
-            className="relative"
-          >
-            {/* The Integrated Workstation Chassis */}
-            <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-pop">
-              {/* Chassis Titlebar */}
-              <div className="flex items-center justify-between border-b border-line bg-subtle/70 px-4 py-2.5 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-2 w-2 rounded-full bg-success" />
-                  <span className="font-bold text-ink">Field Twin Console</span>
-                  <span className="text-ink-faint">·</span>
-                  <span className="text-ink-muted">North Plot A (10.0 ha)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-md border border-line bg-surface px-2 py-0.5 text-[10px] font-bold text-brand uppercase tracking-wider">
-                    Model v2.4
+              <div className="overflow-hidden rounded-2xl border border-white/12 bg-[#0E2920]/80 shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                {/* HUD Header */}
+                <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <Sparkles size={15} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-emerald-400/60">Field Twin</div>
+                      <div className="text-sm font-bold text-white">North Plot · 10 ha</div>
+                    </div>
+                  </div>
+                  <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live Sync
                   </span>
-                  <span className="text-[10px] font-semibold text-ink-faint">Live Sync</span>
-                </div>
-              </div>
-
-              {/* Viewport: Aerial Scene with Inset HUD Data Overlays */}
-              <div className="relative aspect-[16/11] w-full overflow-hidden bg-slate-900">
-                <Image
-                  src="/images/landing_hero.jpg"
-                  alt="Cinematic aerial photograph of Indian rice fields with irrigation channels in Bhimavaram"
-                  fill
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 45vw"
-                  className="object-cover"
-                />
-                {/* Visual depth gradient mask */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30 pointer-events-none" />
-
-                {/* Top HUD: Inset Status Tags */}
-                <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Sensors: 4/4 Online
-                  </div>
-
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-                    <CloudRain size={13} className="text-cyan-300" />
-                    Rain: 70% in 7h (12.3 mm)
-                  </div>
                 </div>
 
-                {/* Bottom Inset HUD: Primary Decision & Sensor Strip */}
-                <div className="absolute inset-x-4 bottom-4 space-y-2.5">
-                  {/* Real-time telemetry readouts */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-white/15 bg-black/50 p-2.5 backdrop-blur-md">
-                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/70">
-                        <span>Root-Zone Moisture</span>
-                        <span className="text-emerald-400">Target 22–30%</span>
-                      </div>
-                      <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-xl font-extrabold text-white">
-                          {moisture.toFixed(1)}%
-                        </span>
-                        <span className="text-[11px] font-medium text-white/80">Healthy</span>
-                      </div>
+                {/* Live Telemetry Grid */}
+                <div className="grid grid-cols-3 gap-px bg-white/5 border-b border-white/8">
+                  {[
+                    { label: "Soil Moisture", value: `${moisture.toFixed(1)}%`, sub: "Target 22–30%", color: "text-emerald-300" },
+                    { label: "Air Temp", value: `${temp.toFixed(1)}°C`, sub: "Optimal < 35°C", color: "text-amber-300" },
+                    { label: "Rain Chance", value: "70%", sub: "In 7 hours", color: "text-sky-300" },
+                  ].map((m) => (
+                    <div key={m.label} className="bg-[#0E2920]/60 px-4 py-4">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-white/35">{m.label}</div>
+                      <div className={`mt-1.5 text-2xl font-extrabold ${m.color}`}>{m.value}</div>
+                      <div className="mt-0.5 text-[10px] font-semibold text-white/30">{m.sub}</div>
                     </div>
+                  ))}
+                </div>
 
-                    <div className="rounded-xl border border-white/15 bg-black/50 p-2.5 backdrop-blur-md">
-                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/70">
-                        <span>Crop Stress Risk</span>
-                        <span className="text-emerald-400">&lt;15% Safe</span>
-                      </div>
-                      <div className="mt-1 flex items-baseline gap-2">
-                        <span className="text-xl font-extrabold text-emerald-300">
-                          5.2%
-                        </span>
-                        <span className="text-[11px] font-medium text-white/80">Low Risk</span>
-                      </div>
+                {/* AI Decision Banner */}
+                <div className="px-5 py-4 border-b border-white/8">
+                  <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3.5">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/60">AI Decision</div>
+                      <div className="mt-0.5 text-xl font-extrabold text-emerald-300">WAIT 6 HOURS</div>
                     </div>
-                  </div>
-
-                  {/* Primary AI Decision Banner */}
-                  <div className="flex items-center justify-between rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/80 to-[#163A31]/90 p-3 text-white backdrop-blur-md shadow-lg">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                        <Sparkles size={14} />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300/90">
-                          Recommended Action
-                        </div>
-                        <div className="text-xs font-extrabold tracking-wide">
-                          WAIT 6 HOURS
-                        </div>
-                      </div>
-                    </div>
-                    <div className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-bold text-emerald-200">
-                      Saves 453 L · Infiltration Safe
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-emerald-300">453 L saved</div>
+                      <div className="text-[10px] font-medium text-white/35">Rain replaces pump</div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Chassis Base Footer: Rationale Line */}
-              <div className="flex items-center justify-between border-t border-line bg-surface px-4 py-2.5 text-xs text-ink-muted">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2 size={13} className="text-brand" />
-                  Physics verified against 48h evapotranspiration model
-                </span>
-                <span className="font-semibold text-brand-dark">
-                  Autonomous re-evaluation at 04:00
-                </span>
+                {/* Zone Moisture Bars */}
+                <div className="px-5 py-4">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-white/30">Zone Moisture Status</div>
+                  {[
+                    { zone: "A", pct: 26.4, ok: true },
+                    { zone: "B", pct: 21.8, ok: false },
+                    { zone: "C", pct: 25.6, ok: true },
+                    { zone: "D", pct: 23.2, ok: true },
+                  ].map((z) => (
+                    <div key={z.zone} className="mb-2.5 flex items-center gap-3">
+                      <span className="w-12 text-[11px] font-bold text-white/50">Zone {z.zone}</span>
+                      <div className="relative flex-1 h-1.5 overflow-hidden rounded-full bg-white/8">
+                        <motion.div
+                          className={`h-full rounded-full ${z.ok ? "bg-emerald-400" : "bg-amber-400"}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(z.pct / 32) * 100}%` }}
+                          transition={{ duration: 1.2, delay: 0.6 + Number(z.zone.charCodeAt(0) - 65) * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                        />
+                      </div>
+                      <span className={`w-12 text-right text-[11px] font-bold ${z.ok ? "text-emerald-300" : "text-amber-300"}`}>
+                        {z.pct}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </div>
+
     </section>
   );
 }

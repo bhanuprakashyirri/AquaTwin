@@ -60,6 +60,19 @@ body {
   overflow-x: hidden;
 }
 
+/* Scrollbars are hidden site-wide — a top progress bar shows position instead (QuizCore standard) */
+html,
+body,
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 html {
   scroll-behavior: smooth;
   /* QuizCore: font-feature-settings for numerals + ligatures */

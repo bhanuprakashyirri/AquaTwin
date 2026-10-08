@@ -14,9 +14,6 @@ export function ScrollProgress() {
   useEffect(() => {
     const update = () => {
       ticking.current = false;
-      // The app may scroll on the viewport, on <body>, or on an inner container
-      // depending on the page — read the position from whichever element is
-      // actually scrolled, and measure against its own scrollable span.
       const se = document.scrollingElement ?? document.documentElement;
       const body = document.body;
       const spans = [
@@ -34,8 +31,6 @@ export function ScrollProgress() {
       }
     };
     update();
-    // capture: true — scroll events don't bubble, but capture listeners on
-    // window still observe them for inner scrolling containers.
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     window.addEventListener("resize", onScroll);
     return () => {
@@ -45,11 +40,13 @@ export function ScrollProgress() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed left-0 right-0 top-0 z-[300] h-[3px]" aria-hidden>
+    <div className="pointer-events-none fixed left-0 right-0 top-0 z-[9999] h-[3.5px]" aria-hidden="true">
       <div
-        className="h-full rounded-r-full bg-brand transition-[width] duration-150 ease-out"
+        className="h-full rounded-r-full bg-gradient-to-r from-emerald-500 via-brand to-emerald-400 transition-[width] duration-150 ease-out shadow-[0_0_12px_rgba(30,90,68,0.65)]"
         style={{ width: `${progress}%` }}
       />
     </div>
   );
 }
+
+export default ScrollProgress;

@@ -85,8 +85,8 @@ export default function LoginPage() {
           className="absolute inset-x-0 bottom-0 p-12"
         >
           <motion.div variants={fadeUp} className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md">
-              <Droplets size={22} className="text-white" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md p-1.5">
+              <Image src="/logo-white.png" alt="AquaTwin" width={28} height={28} className="object-contain" />
             </div>
             <div>
               <div className="text-lg font-semibold tracking-tight text-white">AquaTwin</div>
@@ -121,8 +121,8 @@ export default function LoginPage() {
         >
           {/* mobile brand */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-light">
-              <Droplets size={19} className="text-brand" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-light p-1">
+              <Image src="/logo.png" alt="AquaTwin" width={28} height={28} className="object-contain" />
             </div>
             <div>
               <div className="text-[16px] font-semibold tracking-tight text-ink">AquaTwin</div>

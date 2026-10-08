@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -58,7 +59,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             {/* Active left bar */}
             {active && (
-              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-brand shadow-[0_0_8px_rgba(40,116,95,0.5)]" />
+              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-brand" />
             )}
 
             <span
@@ -99,8 +100,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         <div className="relative flex items-center gap-3">
           {/* Logo mark */}
-          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-[#1C5143] shadow-[0_4px_14px_rgba(28,81,67,0.35)]">
-            <Droplets size={22} className="text-white" />
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-[#1C5143] p-1.5 shadow-[0_4px_14px_rgba(28,81,67,0.35)]">
+            <Image src="/logo-white.png" alt="AquaTwin Logo" width={28} height={28} className="object-contain" />
             {/* Shimmer ring */}
             <span className="absolute -inset-px rounded-2xl border border-white/20" />
           </div>

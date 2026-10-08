@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
 import { ScrollProgress } from "@/components/scroll-progress";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 /**
  * Typography foundation — identical to QuizCore's font stack.
@@ -37,6 +38,11 @@ export const metadata: Metadata = {
     description: "Simulate the future of your field before using a single drop.",
     type: "website",
   },
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.ico",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -44,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${plusJakarta.variable} ${mono.variable}`}>
       <body>
         <ToastProvider>
+          <LoadingScreen />
           <ScrollProgress />
           {children}
         </ToastProvider>
