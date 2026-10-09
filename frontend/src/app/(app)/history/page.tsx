@@ -166,7 +166,7 @@ export default function HistoryPage() {
             </table>
           ) : (
             <div className="p-8 text-center text-tiny text-ink-muted">
-              No irrigation records match the selected filters.
+              {events.length === 0 ? "No irrigation records available." : "No irrigation records match the selected filters."}
             </div>
           )}
         </div>

@@ -24,6 +24,7 @@ import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
+import { useFarm } from "@/context/farm-context";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { EASE, DURATION, fadeUp, tabContent, staggerContainer } from "@/lib/motion";
@@ -53,8 +54,10 @@ const STRATEGIES = [
 const PROGRESS_STEPS = ["Preparing field state", "Projecting future conditions", "Comparing outcomes", "Decision ready"];
 
 export default function SimulatorPage() {
-  const stateQ = useApiData(() => fetchFieldState("field-a"));
-  const wxQ = useApiData(() => fetchWeather("field-a"));
+  const { currentFarm, currentField } = useFarm();
+  const fieldId = currentField?.id || "field-a";
+  const stateQ = useApiData(() => fetchFieldState(fieldId), [fieldId]);
+  const wxQ = useApiData(() => fetchWeather(fieldId), [fieldId]);
   const statusQ = useApiData(() => fetchSystemStatus());
 
   const [mode, setMode] = useState<Mode>("strategy");
@@ -94,7 +97,7 @@ export default function SimulatorPage() {
     <div className="mx-auto max-w-[1440px]">
       <PageHeader
         title="What-If Simulator"
-        subtitle="Compare future irrigation decisions before releasing water."
+        subtitle={`Compare future irrigation decisions for ${currentFarm?.name || "your farm"} before releasing water.`}
         status={statusQ.data}
       />
 
@@ -105,9 +108,9 @@ export default function SimulatorPage() {
             <PanelHeader title="Current field state" />
             <div className="space-y-2.5 p-5 text-sm">
               {[
-                ["Soil moisture", `${(stateQ.data?.rootZoneMoisturePct ?? 24.6).toFixed(1)}%`],
-                ["Crop", "Rice — MTU-7029"],
-                ["Growth stage", "Reproductive"],
+                ["Soil moisture", stateQ.data?.rootZoneMoisturePct ? `${stateQ.data.rootZoneMoisturePct.toFixed(1)}%` : "Soil telemetry unavailable"],
+                ["Crop", currentFarm?.crop ? (currentFarm.cropVariety ? `${currentFarm.crop} — ${currentFarm.cropVariety}` : currentFarm.crop) : "Crop not configured"],
+                ["Growth stage", currentFarm?.growthStage || "Growth stage not set"],
                 ["Forecast rainfall", `${(wxQ.data?.forecast ?? []).slice(0, 24).reduce((s, f) => s + f.rainfallMm, 0).toFixed(1)} mm / 24h`],
                 ["Water available", fmtL(2000)],
               ].map(([k, v]) => (

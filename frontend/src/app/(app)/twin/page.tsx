@@ -27,6 +27,8 @@ import { useSensorStream } from "@/hooks/useSensorStream";
 import { fmtL, stressColor } from "@/lib/format";
 import type { Zone } from "@/types";
 
+import { useFarm } from "@/context/farm-context";
+
 const LAYER_LABELS: Record<string, string> = {
   moisture: "Soil moisture",
   stress: "Crop stress",
@@ -35,7 +37,8 @@ const LAYER_LABELS: Record<string, string> = {
 };
 
 export default function TwinPage() {
-  const [selectedZone, setSelectedZone] = useState<string | null>("zone-b");
+  const { currentFarm, currentField, hasConfiguredFarm, openFarmSetup } = useFarm();
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [layer, setLayer] = useState("moisture");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -59,6 +62,13 @@ export default function TwinPage() {
   const zone = zones.find((z) => z.id === selectedZone) ?? null;
   const st = stateQ.data;
 
+  const displayFieldName = currentField?.name || (hasConfiguredFarm ? `${currentFarm?.name} Plot 1` : "Field Not Configured");
+  const displayCropName = currentField?.crop?.name || "Crop not configured";
+  const displayCropStage = currentField?.crop?.growthStage ? ` · ${currentField.crop.growthStage}` : "";
+  const displayArea = currentFarm?.totalArea
+    ? ` · ${currentFarm.totalArea} ${currentFarm.preferredUnit || "ha"}`
+    : " · Land area not provided";
+
   return (
     <div className="mx-auto max-w-[1440px]">
       <PageHeader
@@ -71,11 +81,11 @@ export default function TwinPage() {
         {/* Map — main focus */}
         <Panel className="overflow-hidden">
           <PanelHeader
-            title={fieldQ.data?.name ?? "North Plot"}
-            subtitle={`${fieldQ.data?.crop.name ?? "Rice"} · ${fieldQ.data?.crop.growthStage ?? ""} · ${fieldQ.data?.areaHa ?? 10} ha`}
-            right={<DataBadge tone="neutral">Live view</DataBadge>}
+            title={displayFieldName}
+            subtitle={`${displayCropName}${displayCropStage}${displayArea}`}
+            right={<DataBadge tone={hasConfiguredFarm ? "good" : "neutral"}>{hasConfiguredFarm ? "Saved Farm" : "Setup Required"}</DataBadge>}
           />
-          <div className="h-[520px] p-2">
+          <div className="h-[560px] p-2">
             <FarmMap
               zones={zones}
               layer={layer}
@@ -85,45 +95,32 @@ export default function TwinPage() {
               sensors={stream.sensors}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-line px-4 py-2.5">
-            <Layers size={13} className="mr-1 text-ink-faint" />
-            {Object.entries(LAYER_LABELS).map(([k, label]) => (
-              <button
-                key={k}
-                onClick={() => setLayer(k)}
-                aria-pressed={layer === k}
-                className={`rounded-full px-3.5 py-1 text-tiny font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-                  layer === k
-                    ? "bg-brand text-white shadow-card"
-                    : "text-ink-muted hover:bg-subtle hover:text-ink"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </Panel>
 
         {/* Zone inspector */}
         <div className="space-y-4">
           <Panel>
             <PanelHeader
-              title={zone ? zone.name : "Zone details"}
+              title={zone ? zone.name : "Zone inspector"}
               subtitle={zone ? `${zone.areaHa} ha · ${zone.soilType}` : "Select a zone on the map"}
+              right={zone ? <DataBadge tone="neutral">Zone active</DataBadge> : null}
             />
             {zone ? (
               <motion.div key={zone.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="p-5">
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {[
-                    { label: "Soil moisture", value: `${zone.moisturePct}%` },
-                    { label: "Crop stress", value: `${zone.stressRiskPct}%`, color: stressColor(zone.stressRiskPct) },
-                    { label: "Water requirement", value: fmtL(zone.waterRequirementL) },
-                    { label: "Rain exposure", value: zone.rainExposure },
-                    { label: "Last irrigated", value: `${zone.lastIrrigatedHoursAgo}h ago` },
-                    { label: "Priority", value: `P${zone.priority}` },
+                    { label: "Soil moisture", value: `${zone.moisturePct}%`, sub: "Volumetric root-zone avg" },
+                    { label: "Crop stress risk", value: `${zone.stressRiskPct}%`, color: stressColor(zone.stressRiskPct), sub: "FAO-56 physical calculation" },
+                    { label: "Water requirement", value: fmtL(zone.waterRequirementL), sub: "Deficit to field capacity" },
+                    { label: "Rain exposure", value: zone.rainExposure, sub: "Canopy & slope factor" },
+                    { label: "Last irrigated", value: `${zone.lastIrrigatedHoursAgo}h ago`, sub: "System telemetry log" },
+                    { label: "Irrigation priority", value: `P${zone.priority}`, sub: "Rationing weight" },
                   ].map((row) => (
-                    <div key={row.label} className="flex items-center justify-between border-b border-line pb-2.5 last:border-0 last:pb-0">
-                      <span className="text-sm text-ink-muted">{row.label}</span>
+                    <div key={row.label} className="flex items-center justify-between border-b border-line/70 pb-2 last:border-0 last:pb-0">
+                      <div>
+                        <div className="text-tiny font-medium text-ink">{row.label}</div>
+                        <div className="text-micro text-ink-faint">{row.sub}</div>
+                      </div>
                       <span className="text-sm font-semibold" style={row.color ? { color: row.color } : undefined}>
                         {row.value}
                       </span>
@@ -131,16 +128,27 @@ export default function TwinPage() {
                   ))}
                 </div>
 
-                {/* Why this zone */}
-                <div className="mt-4 rounded-lg border border-line bg-subtle p-3.5">
-                  <div className="text-tiny font-semibold text-ink">Why this zone?</div>
+                {/* Why this zone rationale */}
+                <div className="mt-4 rounded-xl border border-line bg-subtle/80 p-3.5">
+                  <div className="text-tiny font-semibold text-ink">Field twin analysis</div>
                   <p className="mt-1 text-tiny leading-relaxed text-ink-muted">
                     {zone.id === "zone-b"
-                      ? "Lowest moisture of all zones with the highest predicted stress. Clay-loam soil holds water longer, so a full irrigation now carries the field safely through the next 24 hours."
+                      ? "Lowest moisture of all subzones with highest predicted stress risk. Soil texture holds moisture efficiently, prioritizing early release."
                       : zone.stressRiskPct > 15
-                        ? "Stress risk is above the comfort threshold. Irrigation here reduces predicted stress faster than in lower-priority zones."
-                        : "Moisture is within the healthy range. This zone can wait while water goes where stress risk is higher."}
+                        ? "Stress risk is above comfortable threshold. Irrigation reduces predicted stress faster than lower-priority zones."
+                        : "Moisture is within comfortable target range (24-34%). Can safely defer while limited quota is directed to higher stress zones."}
                   </p>
+                </div>
+
+                {/* Expandable soil hydraulics */}
+                <div className="mt-3 rounded-xl border border-line/70 bg-surface px-3.5 py-2.5 text-micro text-ink-muted">
+                  <div className="font-semibold text-ink-soft mb-1">Hydraulic specifications</div>
+                  <div className="grid grid-cols-2 gap-2 text-micro">
+                    <div>Soil: <span className="font-medium text-ink">{zone.soilType}</span></div>
+                    <div>Root depth: <span className="font-medium text-ink">30 cm</span></div>
+                    <div>Field capacity: <span className="font-medium text-ink">34.0%</span></div>
+                    <div>Wilting point: <span className="font-medium text-ink">14.0%</span></div>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex gap-2">
@@ -148,12 +156,17 @@ export default function TwinPage() {
                     Simulate this zone
                   </LinkButton>
                   <Button variant="secondary" size="sm" onClick={() => setDrawerOpen(true)}>
-                    Explain
+                    Explain AI
                   </Button>
                 </div>
               </motion.div>
             ) : (
-              <div className="p-5 text-sm text-ink-muted">Click a zone on the map to inspect it.</div>
+              <div className="p-8 text-center text-tiny text-ink-muted">
+                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-subtle text-ink-faint">
+                  <Layers size={18} />
+                </div>
+                Select an irrigation zone on the map to inspect its real-time telemetry, soil profile, and water balance.
+              </div>
             )}
           </Panel>
 

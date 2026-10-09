@@ -1,7 +1,5 @@
-"""Dashboard, farm registry, and recommendation endpoints."""
-
-from typing import Optional
-from fastapi import APIRouter, HTTPException
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, Query, Body
 
 from app.db.database import (
     get_farms,
@@ -9,6 +7,9 @@ from app.db.database import (
     get_field,
     get_field_state,
     get_sensors,
+    save_user_farm,
+    update_user_farm,
+    delete_user_farm,
 )
 from app.services.adapters import OpenMeteoWeatherProvider
 from app.services.twin import run_full_simulation, now_iso
@@ -19,9 +20,34 @@ _weather = OpenMeteoWeatherProvider()
 
 
 @router.get("/farms")
-def list_farms() -> dict:
-    farms = get_farms()
+def list_farms(user_id: Optional[str] = Query(None, alias="user_id")) -> dict:
+    farms = get_farms(user_id=user_id)
     return {"farms": farms}
+
+
+@router.post("/farms")
+def create_farm(payload: Dict[str, Any] = Body(...)) -> dict:
+    user_id = payload.get("user_id") or payload.get("userId") or "authenticated-user"
+    farm = save_user_farm(payload, user_id=user_id)
+    return {"farm": farm}
+
+
+@router.put("/farms/{farm_id}")
+def update_farm(farm_id: str, payload: Dict[str, Any] = Body(...)) -> dict:
+    user_id = payload.get("user_id") or payload.get("userId") or "authenticated-user"
+    farm = update_user_farm(farm_id, payload, user_id=user_id)
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found or unauthorized")
+    return {"farm": farm}
+
+
+@router.delete("/farms/{farm_id}")
+def delete_farm(farm_id: str, user_id: Optional[str] = Query(None, alias="user_id")) -> dict:
+    uid = user_id or "authenticated-user"
+    success = delete_user_farm(farm_id, user_id=uid)
+    if not success:
+        raise HTTPException(status_code=404, detail="Farm not found or unauthorized")
+    return {"success": True}
 
 
 @router.get("/farms/{farm_id}")

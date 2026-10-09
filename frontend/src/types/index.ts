@@ -64,8 +64,18 @@ export interface Field {
 
 export interface Farm {
   id: string;
+  userId?: string;
   name: string;
+  country?: string;
+  stateRegion?: string;
+  districtCity?: string;
   location: string;
+  totalArea?: number;
+  preferredUnit?: "ha" | "acres";
+  crop?: string;
+  cropVariety?: string;
+  growthStage?: string;
+  plantingDate?: string;
   fields: Field[];
 }
 

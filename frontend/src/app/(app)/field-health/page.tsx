@@ -151,7 +151,7 @@ export default function FieldHealthPage() {
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-tiny text-ink-muted">No field zones registered.</div>
+                <div className="p-4 text-center text-tiny text-ink-muted">No irrigation zones configured.</div>
               )}
             </div>
           </Panel>

@@ -24,12 +24,15 @@ import { useToast } from "@/components/ui/toast";
 import { EASE, fadeUp, staggerContainer } from "@/lib/motion";
 import { fetchSystemStatus, fetchZones, postOptimize } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
+import { useFarm } from "@/context/farm-context";
 import { fmtL, stressColor } from "@/lib/format";
 import { WATER_BUDGET_PRESETS } from "@/lib/constants";
 import type { OptimizationResult } from "@/types";
 
 export default function WaterBudgetPage() {
-  const zonesQ = useApiData(() => fetchZones("field-a"));
+  const { currentFarm, currentField } = useFarm();
+  const fieldId = currentField?.id || "field-a";
+  const zonesQ = useApiData(() => fetchZones(fieldId), [fieldId]);
   const statusQ = useApiData(() => fetchSystemStatus());
   const [available, setAvailable] = useState(2000);
   const [result, setResult] = useState<OptimizationResult | null>(null);
@@ -39,7 +42,7 @@ export default function WaterBudgetPage() {
 
   const runOptimize = async (value: number, silent = false) => {
     setOptimizing(true);
-    const { data } = await postOptimize(value, "field-a", zonesQ.data?.zones);
+    const { data } = await postOptimize(value, fieldId, zonesQ.data?.zones);
     setResult(data);
     setStale(false);
     setOptimizing(false);
@@ -78,7 +81,7 @@ export default function WaterBudgetPage() {
     <div className="mx-auto max-w-[1440px]">
       <PageHeader
         title="Water Budget"
-        subtitle="Allocate limited water where it reduces crop-stress risk the most."
+        subtitle={currentFarm?.name ? `Allocate limited water across ${currentFarm.name} where it reduces crop-stress risk the most.` : "Allocate limited water where it reduces crop-stress risk the most."}
         status={statusQ.data}
         actions={
           <Button variant="primary" loading={optimizing} onClick={() => runOptimize(available)} className="group shadow-sm">

@@ -205,25 +205,26 @@ export function VoiceAgent() {
 
   return (
     <>
-      {/* Floating launcher */}
+      {/* Floating launcher — compact 44px, quiet styling, mobile-safe */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Open Aqua voice agent"
-        className="fixed bottom-5 right-5 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#1D493D] to-[#2F6B58] text-white shadow-float transition-transform duration-200 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        aria-label="Open Aqua voice assistant"
+        title="Aqua Field Assistant"
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[999] flex h-11 w-11 items-center justify-center rounded-full bg-[#1D493D] text-white shadow-raised border border-white/20 transition-all duration-200 hover:bg-[#28745F] hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         {voiceState === "listening" && (
           <span className="absolute inset-0 animate-ping rounded-full bg-brand/40" />
         )}
         {voiceState === "listening" || voiceState === "speaking" ? (
-          <Mic size={22} />
+          <Mic size={18} />
         ) : (
-          <Bot size={24} />
+          <Bot size={18} />
         )}
         {voiceState !== "idle" && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5">
+          <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-            <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-success" />
+            <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-success" />
           </span>
         )}
       </button>

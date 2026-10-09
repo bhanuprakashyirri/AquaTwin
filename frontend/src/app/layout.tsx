@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/auth-context";
 import { VoiceAgent } from "@/components/agent/VoiceAgent";
 import { ToastProvider } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -45,15 +46,21 @@ export const metadata: Metadata = {
   },
 };
 
+import { FarmProvider } from "@/context/farm-context";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plusJakarta.variable} ${mono.variable}`}>
       <body>
-        <ToastProvider>
-          <LoadingScreen />
-          {children}
-          <VoiceAgent />
-        </ToastProvider>
+        <AuthProvider>
+          <FarmProvider>
+            <ToastProvider>
+              <LoadingScreen />
+              {children}
+              <VoiceAgent />
+            </ToastProvider>
+          </FarmProvider>
+        </AuthProvider>
       </body>
     </html>
   );

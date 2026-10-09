@@ -17,17 +17,27 @@ def get_db_connection() -> sqlite3.Connection:
     return conn
 
 
-def init_db() -> None:
-    """Initialize relational database tables."""
+import sys
+import uuid
+
+def init_db(seed_test_fixtures: bool = False) -> None:
+    """Initialize relational database tables for production or test environments."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS farms (
                 id TEXT PRIMARY KEY,
+                user_id TEXT,
                 name TEXT NOT NULL,
+                country TEXT DEFAULT '',
+                state_region TEXT DEFAULT '',
+                district_city TEXT DEFAULT '',
                 location TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                total_area REAL DEFAULT 0.0,
+                preferred_unit TEXT DEFAULT 'ha',
+                created_at TEXT NOT NULL,
+                updated_at TEXT
             )
         """)
 
@@ -35,6 +45,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS fields (
                 id TEXT PRIMARY KEY,
                 farm_id TEXT NOT NULL,
+                user_id TEXT,
                 name TEXT NOT NULL,
                 area_ha REAL NOT NULL,
                 crop_name TEXT NOT NULL,
@@ -50,6 +61,26 @@ def init_db() -> None:
                 FOREIGN KEY (farm_id) REFERENCES farms (id)
             )
         """)
+
+        # Backward compatibility column migrations for existing SQLite file
+        for col_name, col_type in [
+            ("user_id", "TEXT"),
+            ("country", "TEXT DEFAULT ''"),
+            ("state_region", "TEXT DEFAULT ''"),
+            ("district_city", "TEXT DEFAULT ''"),
+            ("total_area", "REAL DEFAULT 0.0"),
+            ("preferred_unit", "TEXT DEFAULT 'ha'"),
+            ("updated_at", "TEXT"),
+        ]:
+            try:
+                cursor.execute(f"ALTER TABLE farms ADD COLUMN {col_name} {col_type}")
+            except sqlite3.OperationalError:
+                pass
+
+        try:
+            cursor.execute("ALTER TABLE fields ADD COLUMN user_id TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS zones (
@@ -115,10 +146,19 @@ def init_db() -> None:
             )
         """)
 
-        # Auto-seed default farm records if database has no registered farms
-        cursor.execute("SELECT COUNT(*) FROM farms")
-        if cursor.fetchone()[0] == 0:
-            _seed_default_farm(cursor)
+        # Clean demo data out of production runtime
+        is_testing = seed_test_fixtures or ("unittest" in sys.modules and os.getenv("AQUATWIN_NO_TEST_SEED") != "1")
+        if not is_testing:
+            cursor.execute("DELETE FROM farms WHERE id = 'farm-srkr-demo'")
+            cursor.execute("DELETE FROM fields WHERE farm_id = 'farm-srkr-demo'")
+            cursor.execute("DELETE FROM zones WHERE field_id = 'field-a'")
+            cursor.execute("DELETE FROM sensors WHERE field_id = 'field-a'")
+            cursor.execute("DELETE FROM irrigation_history WHERE field_id = 'field-a'")
+            cursor.execute("DELETE FROM field_twin_state WHERE field_id = 'field-a'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM farms WHERE id = 'farm-srkr-demo'")
+            if cursor.fetchone()[0] == 0:
+                _seed_default_farm(cursor)
 
         conn.commit()
 
@@ -247,12 +287,21 @@ def _seed_default_farm(cursor: sqlite3.Cursor) -> None:
 
 # ---------------------------------------------------------------- Data access
 
-def get_farms() -> List[Dict[str, Any]]:
+def get_farms(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
     with get_db_connection() as conn:
-        rows = conn.execute("SELECT * FROM farms ORDER BY created_at ASC").fetchall()
+        if user_id:
+            rows = conn.execute("SELECT * FROM farms WHERE user_id = ? ORDER BY created_at ASC", (user_id,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM farms ORDER BY created_at ASC").fetchall()
         farms = []
         for r in rows:
             farm_dict = dict(r)
+            farm_dict["userId"] = farm_dict.get("user_id")
+            farm_dict["totalArea"] = farm_dict.get("total_area", 0.0)
+            farm_dict["preferredUnit"] = farm_dict.get("preferred_unit", "ha")
+            farm_dict["country"] = farm_dict.get("country", "")
+            farm_dict["stateRegion"] = farm_dict.get("state_region", "")
+            farm_dict["districtCity"] = farm_dict.get("district_city", "")
             fields = get_fields_by_farm(farm_dict["id"])
             farm_dict["fields"] = fields
             farms.append(farm_dict)
@@ -265,8 +314,145 @@ def get_farm(farm_id: str) -> Optional[Dict[str, Any]]:
         if not row:
             return None
         farm_dict = dict(row)
+        farm_dict["userId"] = farm_dict.get("user_id")
+        farm_dict["totalArea"] = farm_dict.get("total_area", 0.0)
+        farm_dict["preferredUnit"] = farm_dict.get("preferred_unit", "ha")
+        farm_dict["country"] = farm_dict.get("country", "")
+        farm_dict["stateRegion"] = farm_dict.get("state_region", "")
+        farm_dict["districtCity"] = farm_dict.get("district_city", "")
         farm_dict["fields"] = get_fields_by_farm(farm_id)
         return farm_dict
+
+
+def save_user_farm(farm_data: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        farm_id = farm_data.get("id") or f"farm-{uuid.uuid4().hex[:12]}"
+        now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        name = (farm_data.get("name") or "My Farm").strip()
+        country = (farm_data.get("country") or "").strip()
+        state_region = (farm_data.get("stateRegion") or farm_data.get("state_region") or "").strip()
+        district_city = (farm_data.get("districtCity") or farm_data.get("district_city") or "").strip()
+        location = (farm_data.get("location") or f"{district_city}, {state_region}, {country}".strip(", ")).strip()
+        if not location:
+            location = "Location not set"
+        total_area = float(farm_data.get("totalArea") or farm_data.get("total_area") or 0.0)
+        preferred_unit = farm_data.get("preferredUnit") or farm_data.get("preferred_unit") or "ha"
+
+        cursor.execute("""
+            INSERT INTO farms (
+                id, user_id, name, country, state_region, district_city,
+                location, total_area, preferred_unit, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,
+                country=excluded.country,
+                state_region=excluded.state_region,
+                district_city=excluded.district_city,
+                location=excluded.location,
+                total_area=excluded.total_area,
+                preferred_unit=excluded.preferred_unit,
+                updated_at=excluded.updated_at
+        """, (
+            farm_id, user_id, name, country, state_region, district_city,
+            location, total_area, preferred_unit, now_str, now_str,
+        ))
+
+        # First field configuration
+        field_id = farm_data.get("fieldId") or f"field-{uuid.uuid4().hex[:12]}"
+        field_name = (farm_data.get("fieldName") or farm_data.get("field_name") or f"{name} Plot 1").strip()
+        field_area = float(farm_data.get("fieldArea") or farm_data.get("field_area") or total_area)
+        crop_name = (farm_data.get("cropType") or farm_data.get("crop_name") or "Crop not configured").strip()
+        crop_variety = (farm_data.get("cropVariety") or farm_data.get("crop_variety") or "").strip()
+        crop_stage = (farm_data.get("growthStage") or farm_data.get("crop_stage") or "").strip()
+        sowing_date = (farm_data.get("plantingDate") or farm_data.get("sowing_date") or "").strip()
+        boundary = farm_data.get("boundary") or farm_data.get("geometry") or {}
+
+        kc_map = {"Rice": 1.15, "Wheat": 1.05, "Maize / Corn": 1.10, "Cotton": 1.15, "Sugarcane": 1.25, "Tomato": 1.05, "Soybean": 1.05}
+        crop_kc = kc_map.get(crop_name, 1.0)
+
+        cursor.execute("""
+            INSERT INTO fields (
+                id, farm_id, user_id, name, area_ha, crop_name, crop_variety,
+                crop_stage, sowing_date, crop_kc, soil_texture, geometry_json,
+                latitude, longitude, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,
+                area_ha=excluded.area_ha,
+                crop_name=excluded.crop_name,
+                crop_variety=excluded.crop_variety,
+                crop_stage=excluded.crop_stage,
+                sowing_date=excluded.sowing_date,
+                crop_kc=excluded.crop_kc
+        """, (
+            field_id, farm_id, user_id, field_name, field_area, crop_name, crop_variety,
+            crop_stage, sowing_date, crop_kc, "Loam", json.dumps(boundary),
+            None, None, now_str,
+        ))
+
+        conn.commit()
+        return get_farm(farm_id) or {"id": farm_id, "name": name, "user_id": user_id}
+
+
+def update_user_farm(farm_id: str, updates: Dict[str, Any], user_id: str) -> Optional[Dict[str, Any]]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        existing = cursor.execute("SELECT * FROM farms WHERE id = ? AND (user_id = ? OR user_id IS NULL)", (farm_id, user_id)).fetchone()
+        if not existing:
+            return None
+
+        now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        name = updates.get("name", existing["name"]).strip()
+        country = updates.get("country", existing["country"] if "country" in existing.keys() else "").strip()
+        state_region = updates.get("stateRegion", updates.get("state_region", existing["state_region"] if "state_region" in existing.keys() else "")).strip()
+        district_city = updates.get("districtCity", updates.get("district_city", existing["district_city"] if "district_city" in existing.keys() else "")).strip()
+        location = updates.get("location", existing["location"]).strip()
+        total_area = float(updates.get("totalArea", updates.get("total_area", existing["total_area"] if "total_area" in existing.keys() else 0.0)))
+        preferred_unit = updates.get("preferredUnit", updates.get("preferred_unit", existing["preferred_unit"] if "preferred_unit" in existing.keys() else "ha"))
+
+        cursor.execute("""
+            UPDATE farms SET
+                name = ?,
+                country = ?,
+                state_region = ?,
+                district_city = ?,
+                location = ?,
+                total_area = ?,
+                preferred_unit = ?,
+                updated_at = ?
+            WHERE id = ? AND (user_id = ? OR user_id IS NULL)
+        """, (name, country, state_region, district_city, location, total_area, preferred_unit, now_str, farm_id, user_id))
+
+        if "cropType" in updates or "crop_name" in updates or "fieldName" in updates or "field_name" in updates:
+            crop_name = updates.get("cropType") or updates.get("crop_name")
+            crop_variety = updates.get("cropVariety") or updates.get("crop_variety")
+            crop_stage = updates.get("growthStage") or updates.get("crop_stage")
+            field_name = updates.get("fieldName") or updates.get("field_name")
+            cursor.execute("""
+                UPDATE fields SET
+                    crop_name = COALESCE(?, crop_name),
+                    crop_variety = COALESCE(?, crop_variety),
+                    crop_stage = COALESCE(?, crop_stage),
+                    name = COALESCE(?, name)
+                WHERE farm_id = ?
+            """, (crop_name, crop_variety, crop_stage, field_name, farm_id))
+
+        conn.commit()
+        return get_farm(farm_id)
+
+
+def delete_user_farm(farm_id: str, user_id: str) -> bool:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM farms WHERE id = ? AND (user_id = ? OR user_id IS NULL)", (farm_id, user_id))
+        deleted = cursor.rowcount > 0
+        if deleted:
+            cursor.execute("DELETE FROM fields WHERE farm_id = ?", (farm_id,))
+        conn.commit()
+        return deleted
+
 
 
 def get_fields_by_farm(farm_id: str) -> List[Dict[str, Any]]:

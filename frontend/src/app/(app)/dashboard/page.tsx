@@ -43,8 +43,10 @@ import { useSensorStream } from "@/hooks/useSensorStream";
 import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { fmtL, stressColor } from "@/lib/format";
 import type { Zone } from "@/types";
+import { useFarm } from "@/context/farm-context";
 
 export default function DashboardPage() {
+  const { currentFarm, currentField, hasConfiguredFarm, openFarmSetup } = useFarm();
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [layer, setLayer] = useState("moisture");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -80,7 +82,7 @@ export default function DashboardPage() {
   const stress = rec?.stressRiskPct ?? null;
 
   const lastIrrigated = useMemo(() => {
-    if (!zones.length) return "No records";
+    if (!zones.length) return "No irrigation records available";
     const hours = Math.min(...zones.map((z) => z.lastIrrigatedHoursAgo || 0));
     return `${Math.round(hours)}h ago`;
   }, [zones]);
@@ -116,6 +118,28 @@ export default function DashboardPage() {
         subtitle="Real-time field conditions, water demand, and recommended actions."
         status={statusQ.data}
       />
+
+      {!hasConfiguredFarm && (
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-dashed border-brand/40 bg-brand-light/40 p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
+              <Sprout size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-ink">Set up your farm to continue</h3>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Add your real farm name, land area, and crop details to activate personalized irrigation intelligence.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={openFarmSetup}
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-dark transition-colors shrink-0 cursor-pointer"
+          >
+            Configure Farm <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Primary KPIs */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">

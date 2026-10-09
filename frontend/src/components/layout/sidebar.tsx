@@ -37,10 +37,34 @@ const NAV_OPERATIONS = [
   { href: "/settings", label: "Settings", icon: Settings, desc: "Preferences" },
 ];
 
+import { useAuth } from "@/context/auth-context";
+import { useFarm } from "@/context/farm-context";
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+  const { currentFarm, currentField, hasConfiguredFarm, openFarmSetup } = useFarm();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  const fullName =
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "AquaTwin Operator";
+
+  const initials =
+    fullName
+      .split(" ")
+      .map((w: string) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "AT";
+
+  const farmLocation = currentFarm?.location || currentFarm?.stateRegion || "Saved Location";
+  const areaStr = currentFarm?.totalArea
+    ? `${currentFarm.totalArea} ${currentFarm.preferredUnit || "ha"}`
+    : "Land area not provided";
+  const cropStr = currentField?.crop?.name || "Crop not configured";
 
   // Clear pending optimistic state when route officially lands
   useEffect(() => {
@@ -177,53 +201,75 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Farm & User Card */}
       <div className="p-3.5 space-y-2.5">
-        {/* Farm status card */}
-        <div className="rounded-2xl border border-[#D4E6DD] bg-white px-4 py-3 shadow-[0_2px_8px_rgba(40,116,95,0.07)]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-light">
-                <Sprout size={13} className="text-brand-dark" />
+        {hasConfiguredFarm && currentFarm ? (
+          /* Actual configured farm card */
+          <div className="rounded-2xl border border-[#D4E6DD] bg-white px-4 py-3 shadow-[0_2px_8px_rgba(40,116,95,0.07)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-light">
+                  <Sprout size={13} className="text-brand-dark" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[12px] font-semibold text-ink leading-tight truncate">
+                    {currentFarm.name}
+                  </div>
+                  <div className="text-[10px] text-ink-muted truncate">
+                    {farmLocation}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-[12px] font-semibold text-ink leading-tight">Bhimavaram Farm</div>
-                <div className="text-[10px] text-ink-muted">10 ha · Rice Paddy</div>
+              <div className="flex flex-col items-end gap-0.5 shrink-0 pl-1">
+                <span className="text-[9px] font-medium text-ink-muted">Enrolled</span>
+                <span className="text-[9px] text-ink-faint">Manual / Twin</span>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-0.5">
-              <div className="flex items-center gap-1">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-                  <span className="relative h-2 w-2 rounded-full bg-success" />
-                </span>
-                <span className="text-[10px] font-medium text-success">Live</span>
-              </div>
-              <span className="text-[9px] text-ink-faint">Auto-Twin</span>
-            </div>
-          </div>
 
-          {/* Sensor bar */}
-          <div className="mt-2.5 flex items-center gap-2">
-            <Wifi size={10} className="text-brand/70" />
-            <div className="flex-1 h-1.5 rounded-full bg-[#EBF0ED] overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-brand to-[#34A87A]"
-                initial={{ width: 0 }}
-                animate={{ width: "78%" }}
-                transition={{ delay: 0.6, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-              />
+            {/* Configured Area and Crop */}
+            <div className="mt-2 text-[10px] text-ink-soft flex items-center gap-1.5 truncate">
+              <span className="font-semibold text-ink">{areaStr}</span>
+              <span>·</span>
+              <span className="truncate">{cropStr}</span>
             </div>
-            <span className="text-[9px] font-medium text-brand">8/10 zones</span>
+
+            {/* Sensor / Zone Configuration status */}
+            <div className="mt-2 flex items-center gap-2 border-t border-line/60 pt-2">
+              <Wifi size={10} className="text-ink-faint shrink-0" />
+              <span className="text-[9px] text-ink-muted truncate">
+                No irrigation zones configured
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Honest unconfigured setup prompt */
+          <div className="rounded-2xl border border-dashed border-[#BFDCCB] bg-[#F2F8F5] p-3.5 text-center">
+            <div className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-brand/10 text-brand mb-1.5">
+              <Sprout size={14} />
+            </div>
+            <div className="text-[12px] font-semibold text-ink">Set up your farm</div>
+            <p className="mt-0.5 text-[10px] text-ink-muted leading-tight">
+              Add your farm details to personalize irrigation intelligence.
+            </p>
+            <button
+              onClick={openFarmSetup}
+              className="mt-2.5 inline-flex w-full items-center justify-center rounded-full bg-brand px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-brand-dark transition-colors cursor-pointer"
+            >
+              Configure Farm
+            </button>
+          </div>
+        )}
 
         {/* User row */}
         <div className="flex items-center gap-2.5 px-1">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-[#1C5143] text-xs font-bold text-white shadow-sm">
-            RK
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-semibold text-ink leading-tight truncate">Ravi Kumar</div>
-            <div className="text-[10px] text-ink-faint">Lead Agronomist</div>
+            <div className="text-[12px] font-semibold text-ink leading-tight truncate">
+              {fullName}
+            </div>
+            <div className="text-[10px] text-ink-faint truncate">
+              {user?.email || "Authenticated Operator"}
+            </div>
           </div>
           <span className="inline-flex items-center rounded-full bg-[#E8F5EE] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-dark">
             Active

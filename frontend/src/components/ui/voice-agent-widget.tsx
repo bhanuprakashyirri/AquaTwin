@@ -14,6 +14,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
 
 interface VoiceMessage {
   id: string;
@@ -33,7 +34,7 @@ const PRESET_ANSWERS: Record<string, string> = {
   "Irrigate Zone B?":
     "Zone B is at 21.8% moisture with 22% crop stress risk. The Twin recommends waiting 6 hours — 12.3 mm of rainfall is approaching with 70% confidence. Irrigating now would waste ≈453 Litres.",
   "Rain forecast 24h?":
-    "Bhimavaram Forecast: 12.3 mm expected in the next 24h. Peak probability window is 07:00–09:00 (+70%). Confidence score: 0.78. Advise defer irrigation.",
+    "Local Field Forecast: 12.3 mm expected in the next 24h. Peak probability window is 07:00–09:00 (+70%). Confidence score: 0.78. Advise defer irrigation.",
   "Water savings estimate?":
     "Simulation complete: Deferring by 6 hours saves 453 Litres (30% of planned schedule) while keeping all zones above critical threshold. ROI: ₹680 saved.",
   "Optimize 1,500 L budget":
@@ -41,6 +42,8 @@ const PRESET_ANSWERS: Record<string, string> = {
 };
 
 export function VoiceAgentWidget() {
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "there";
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -48,7 +51,7 @@ export function VoiceAgentWidget() {
     {
       id: "1",
       sender: "ai",
-      text: "Namaste, Ravi. I'm your AquaTwin Voice AI. Ask me anything about your field's moisture, water budget, or irrigation schedule.",
+      text: `Namaste, ${userName}. I'm your AquaTwin Voice AI. Ask me anything about your field's moisture, water budget, or irrigation schedule.`,
       time: "Just now",
     },
   ]);

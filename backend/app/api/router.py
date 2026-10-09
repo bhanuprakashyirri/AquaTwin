@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     agent,
-    auth,
     dashboard,
     field_twin,
     health,
@@ -18,7 +17,6 @@ router = APIRouter()
 api_router = router
 
 # Include v1 domain routers
-router.include_router(auth.router)
 router.include_router(health.router)
 router.include_router(agent.router, prefix="/agent")
 router.include_router(dashboard.router)

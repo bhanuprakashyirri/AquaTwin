@@ -4,42 +4,72 @@ import { Database, CloudSun, Satellite, RefreshCcw } from "lucide-react";
 import type { SystemStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
-function FreshItem({
-  icon,
-  label,
-  detail,
-  live = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  detail: string;
-  live?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-ink-faint">{icon}</span>
-      <div className="leading-tight">
-        <div className="flex items-center gap-1.5 text-tiny font-medium text-ink-soft">
-          {label}
-          {live ? <span className="relative flex h-1.5 w-1.5"><span className="absolute h-full w-full animate-ping rounded-full bg-success/50" /><span className="relative h-1.5 w-1.5 rounded-full bg-success" /></span> : null}
-        </div>
-        <div className="text-micro text-ink-faint">{detail}</div>
-      </div>
-    </div>
-  );
+interface StatusSource {
+  name: string;
+  status: string;
+  updated?: string;
+  isLive?: boolean;
 }
 
-/** Compact, human data-freshness strip — replaces the technical status bar. */
+/**
+ * Compact, unified data-source status strip.
+ * Clean, calm GIS styling with Name, Current status, and Last update.
+ */
 export function SystemStatusBar({ status }: { status: SystemStatus | null }) {
   const satSync = status?.satelliteLastSync
     ? new Date(status.satelliteLastSync).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : "Sep 29";
+
+  const isSensorLive = status?.sensorStream === "LIVE";
+
+  const sources: StatusSource[] = [
+    {
+      name: "Sensor Network",
+      status: isSensorLive ? "Connected" : "Telemetry Active",
+      updated: "2m ago",
+      isLive: isSensorLive,
+    },
+    {
+      name: "Weather Model",
+      status: "Synced",
+      updated: "Open-Meteo 48h",
+      isLive: false,
+    },
+    {
+      name: "Satellite Imagery",
+      status: "Synced",
+      updated: satSync,
+      isLive: false,
+    },
+    {
+      name: "Digital Twin",
+      status: "Active",
+      updated: "FAO-56 Dual Kc",
+      isLive: false,
+    },
+  ];
+
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-      <FreshItem icon={<Database size={14} />} label="Sensor data" detail="Updated 2 min ago" live />
-      <FreshItem icon={<CloudSun size={14} />} label="Weather" detail="Updated 8 min ago" />
-      <FreshItem icon={<Satellite size={14} />} label="Satellite" detail={`Synced ${satSync}`} />
-      <FreshItem icon={<RefreshCcw size={14} />} label="Digital Twin" detail="Active" />
+    <div className="inline-flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-line/80 bg-subtle/60 px-3.5 py-1.5 text-tiny backdrop-blur-sm">
+      {sources.map((src, i) => (
+        <div key={src.name} className="flex items-center gap-2">
+          {i > 0 && <span className="h-3 w-px bg-line/80" />}
+          <div className="flex items-center gap-1.5">
+            {src.isLive && (
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute h-full w-full animate-ping rounded-full bg-success/60" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-success" />
+              </span>
+            )}
+            <span className="font-medium text-ink-soft">{src.name}</span>
+            <span className="text-ink-muted">·</span>
+            <span className="text-ink-muted">{src.status}</span>
+            {src.updated && (
+              <span className="text-micro text-ink-faint">({src.updated})</span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

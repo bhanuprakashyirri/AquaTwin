@@ -1,25 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, CloudRain, Menu, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Bell, CloudRain, LogOut, Menu, Settings as SettingsIcon, Sparkles, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WhyDrawer } from "@/components/ui/assistant";
-import { fetchFarms, fetchWeather } from "@/services/api";
+import { fetchWeather } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
+import { useAuth } from "@/context/auth-context";
+import { useFarm } from "@/context/farm-context";
 
 export function Header() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const { currentFarm, currentField, hasConfiguredFarm, openFarmSetup } = useFarm();
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const wxQ = useApiData(() => fetchWeather("field-a"));
-  const farmsQ = useApiData(() => fetchFarms());
 
   const forecast = wxQ.data?.forecast ?? [];
   const rain = forecast.find((f) => f.rainProbabilityPct >= 50 && f.rainfallMm > 0.5);
   const rainIndex = rain ? forecast.indexOf(rain) : -1;
   const currentTemp = forecast.length ? Math.round(forecast[0].temperatureC) : null;
-  const farmName = farmsQ.data?.farms[0]?.name ?? "AquaTwin Farm";
+  const farmName = hasConfiguredFarm && currentFarm ? currentFarm.name : "Set Up Your Farm";
+  const plotName = currentField?.name || (hasConfiguredFarm ? "Field Plot 1" : "No Field Configured");
+
+  // Derive user info
+  const fullName =
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "AquaTwin Operator";
+
+  const initials = fullName
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "AT";
+
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await signOut();
+    router.push("/login");
+  };
 
   return (
     <header className="relative flex h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 md:px-6">
@@ -37,9 +64,18 @@ export function Header() {
         </button>
 
         <div className="flex min-w-0 items-center gap-2.5 text-sm">
-          <span className="truncate font-semibold text-ink">{farmName}</span>
+          {hasConfiguredFarm ? (
+            <span className="truncate font-semibold text-ink">{farmName}</span>
+          ) : (
+            <button
+              onClick={openFarmSetup}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-2.5 py-1 text-xs font-semibold text-brand-dark hover:bg-brand/20 transition-colors cursor-pointer"
+            >
+              + Configure Farm
+            </button>
+          )}
           <span className="hidden h-4 w-px bg-line sm:block" />
-          <span className="hidden truncate text-ink-muted sm:inline">North Plot</span>
+          <span className="hidden truncate text-ink-muted sm:inline">{plotName}</span>
           <span className="hidden h-4 w-px bg-line sm:block" />
           <span className="hidden text-ink-muted md:inline">Precision Irrigation Console</span>
         </div>
@@ -92,6 +128,7 @@ export function Header() {
           <span className="hidden sm:inline">Explain AI</span>
         </Button>
 
+        {/* User profile dropdown with Supabase sign out */}
         <div className="relative">
           <button
             onClick={() => { setMenuOpen(!menuOpen); setNotifOpen(false); }}
@@ -99,15 +136,34 @@ export function Header() {
             aria-expanded={menuOpen}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-light to-[#DCEBE2] text-tiny font-bold text-brand-dark transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 shadow-sm cursor-pointer"
           >
-            AT
+            {initials}
           </button>
           {menuOpen ? (
-            <div className="absolute right-0 top-11 z-50 w-44 rounded-xl2 border border-line bg-surface p-1.5 shadow-pop">
-              {["Farm profile", "Integrations", "Sign out"].map((m) => (
-                <div key={m} className="cursor-default rounded-lg px-3 py-2 text-tiny text-ink-soft hover:bg-subtle">
-                  {m}
-                </div>
-              ))}
+            <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl border border-line bg-surface p-1.5 shadow-pop">
+              {/* User Identity info */}
+              <div className="border-b border-line px-3 py-2.5">
+                <div className="text-xs font-semibold text-ink truncate">{fullName}</div>
+                {user?.email && (
+                  <div className="text-micro text-ink-muted truncate mt-0.5">{user.email}</div>
+                )}
+              </div>
+
+              <div className="pt-1">
+                <Link
+                  href="/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-tiny font-medium text-ink-soft hover:bg-subtle hover:text-ink transition-colors"
+                >
+                  <SettingsIcon size={14} className="text-ink-faint" /> Settings & Profile
+                </Link>
+
+                <button
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-tiny font-medium text-danger hover:bg-danger/10 transition-colors cursor-pointer text-left"
+                >
+                  <LogOut size={14} /> Sign out
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
