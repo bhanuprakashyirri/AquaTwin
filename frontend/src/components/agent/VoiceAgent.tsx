@@ -130,7 +130,12 @@ export function VoiceAgent() {
       typingRef.current = true;
       setTyping(true);
       try {
-        const res = await runAgent(text, { currentPath: pathnameRef.current });
+        const res = await runAgent(text, {
+          currentPath: pathnameRef.current,
+          history: messages
+            .filter((m) => m.role === "user" || m.role === "agent")
+            .map((m) => ({ role: m.role as "user" | "agent", text: m.text })),
+        });
         await applyActions(res.actions);
         appendMsg("agent", res.text);
         const summary = actionSummary(res.actions);
@@ -207,7 +212,7 @@ export function VoiceAgent() {
         transition={{ type: "spring", damping: 18, stiffness: 260, delay: 0.4 }}
         onClick={() => setOpen((v) => !v)}
         aria-label="Open Aqua voice agent"
-        className="fixed bottom-5 right-5 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-pop transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="fixed bottom-5 right-5 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-brand-dark to-brand text-white shadow-float transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         {voiceState === "listening" && (
           <span className="absolute inset-0 animate-ping rounded-full bg-brand/40" />
@@ -233,17 +238,17 @@ export function VoiceAgent() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 16 }}
             transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed bottom-24 right-5 z-[9999] flex h-[540px] max-h-[calc(100vh-120px)] w-[380px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-xl2 border border-line bg-surface shadow-pop"
+            className="fixed bottom-24 right-5 z-[9999] flex h-[540px] max-h-[calc(100vh-120px)] w-[380px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-xl2 border border-line bg-page shadow-float"
           >
             {/* Header */}
-            <div className="flex items-center justify-between bg-brand-dark px-4 py-3 text-white">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-                  <Bot size={18} />
+            <div className="flex items-center justify-between bg-gradient-to-r from-brand-dark to-brand-mid px-4 py-3.5 text-white shadow-sm z-10">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 shadow-inner">
+                  <Bot size={20} />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold">Aqua</div>
-                  <div className="flex items-center gap-1.5 text-micro text-white/70">
+                  <div className="text-base font-bold tracking-wide">Aqua</div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-white/85">
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
                         voiceState !== "idle" ? "bg-success" : "bg-white/40"
@@ -289,10 +294,10 @@ export function VoiceAgent() {
                 ) : (
                   <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[85%] px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                      className={`max-w-[85%] px-4 py-3 text-[14px] leading-relaxed font-medium ${
                         m.role === "user"
-                          ? "rounded-xl2 rounded-br-sm bg-brand text-white"
-                          : "rounded-xl2 rounded-bl-sm border border-line bg-surface text-ink shadow-card"
+                          ? "rounded-xl2 rounded-br-sm bg-gradient-to-br from-brand to-brand-mid text-white shadow-sm"
+                          : "rounded-xl2 rounded-bl-sm border border-line-faint bg-white text-ink shadow-card"
                       }`}
                     >
                       {m.text}
@@ -317,12 +322,12 @@ export function VoiceAgent() {
             </div>
 
             {/* Quick chips */}
-            <div className="flex gap-1.5 overflow-x-auto border-t border-line bg-surface px-3 py-2">
+            <div className="flex gap-2 overflow-x-auto border-t border-line bg-surface px-4 py-3 scrollbar-hide">
               {QUICK_CHIPS.map((chip) => (
                 <button
                   key={chip}
                   onClick={() => send(chip)}
-                  className="shrink-0 rounded-full border border-line bg-subtle px-2.5 py-1 text-micro text-ink-soft transition-colors hover:border-brand hover:bg-brand-light hover:text-brand-dark"
+                  className="shrink-0 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink-soft shadow-sm transition-all hover:border-brand hover:bg-brand-light hover:text-brand-dark"
                 >
                   {chip}
                 </button>
@@ -330,17 +335,17 @@ export function VoiceAgent() {
             </div>
 
             {/* Input footer */}
-            <form className="flex items-center gap-2 border-t border-line bg-surface p-3" onSubmit={onSubmit}>
+            <form className="flex items-center gap-2.5 border-t border-line bg-surface p-4" onSubmit={onSubmit}>
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask Aqua anything…"
-                className="h-10 flex-1 rounded-full border border-line bg-white px-4 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-brand"
+                className="h-11 flex-1 rounded-full border border-line bg-subtle px-4 text-sm font-medium text-ink outline-none transition-all placeholder:text-ink-faint focus:border-brand focus:bg-white focus:shadow-inner-sm"
               />
               <button
                 type="submit"
                 aria-label="Send message"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-colors hover:bg-brand-dark"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white shadow-sm transition-all hover:scale-105 hover:bg-brand-dark"
               >
                 <SendHorizonal size={16} />
               </button>

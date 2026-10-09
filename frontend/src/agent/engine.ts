@@ -1,11 +1,15 @@
 /**
  * AquaTwin voice agent engine.
  *
- * Rule-based NLU (deterministic, zero API keys, works fully offline)
- * that parses natural language into intents, executes the matching
- * tools, and returns a spoken-friendly response plus site-control
- * actions for the widget to apply (navigation, map layers, zone
- * selection, simulation, optimization).
+ * Gemini Flash (via the backend's POST /api/agent/chat endpoint)
+ * drives the agent when GEMINI_API_KEY is configured — it reasons
+ * over the conversation, calls the field data tools, and operates
+ * the site on its own (navigation, map layers, zone selection,
+ * simulation, water-budget optimization).
+ *
+ * When no key is configured, a rule-based NLU engine (deterministic,
+ * zero API keys, works fully offline) parses natural language into
+ * intents and executes the matching tools.
  */
 
 import { tools } from "./tools";
@@ -37,8 +41,14 @@ export interface AgentResponse {
   actions: SiteAction[];
 }
 
+export interface AgentMessage {
+  role: "user" | "agent";
+  text: string;
+}
+
 export interface AgentContext {
   currentPath: string;
+  history?: AgentMessage[];
 }
 
 type Intent =
@@ -105,7 +115,57 @@ const UNKNOWN_TEXT =
 
 // ---------------------------------------------------------------- entry point
 
-export async function runAgent(input: string, ctx: AgentContext): Promise<AgentResponse> {
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://localhost:8000";
+
+/** Session-level availability cache — avoids a failed round-trip per message when the backend has no Gemini key. */
+const remoteAgent = { enabled: true };
+
+async function runRemoteAgent(
+  input: string,
+  ctx: AgentContext,
+): Promise<AgentResponse> {
+  const res = await fetch(`${API_BASE}/api/agent/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: [...(ctx.history ?? []), { role: "user", text: input }],
+      currentPath: ctx.currentPath,
+    }),
+  });
+  if (!res.ok) {
+    if (res.status === 503) remoteAgent.enabled = false;
+    throw new Error(`agent endpoint failed: ${res.status}`);
+  }
+  remoteAgent.enabled = true;
+  return (await res.json()) as AgentResponse;
+}
+
+export async function runAgent(
+  input: string,
+  ctx: AgentContext,
+): Promise<AgentResponse> {
+  const text = input.trim();
+  if (!text) return { text: UNKNOWN_TEXT, actions: [] };
+
+  // Gemini Flash drives the agent when the backend has GEMINI_API_KEY
+  // configured; the deterministic engine below is the offline fallback.
+  if (remoteAgent.enabled) {
+    try {
+      return await runRemoteAgent(text, ctx);
+    } catch {
+      remoteAgent.enabled = false;
+    }
+  }
+  return runLocalAgent(text, ctx);
+}
+
+async function runLocalAgent(
+  input: string,
+  ctx: AgentContext,
+): Promise<AgentResponse> {
   const text = input.trim().toLowerCase();
   if (!text) return { text: UNKNOWN_TEXT, actions: [] };
   try {

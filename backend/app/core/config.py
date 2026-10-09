@@ -28,6 +28,11 @@ class Settings:
 
     # Integrations (optional secrets kept strictly on backend)
     GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_BASE_URL: str = os.getenv(
+        "GEMINI_BASE_URL",
+        "https://generativelanguage.googleapis.com/v1beta",
+    )
     REDIS_URL: str | None = os.getenv("REDIS_URL")
     DATABASE_URL: str | None = os.getenv("DATABASE_URL")
 
