@@ -3,15 +3,23 @@ import type { ReactNode } from "react";
 
 /**
  * Workspace card — standard white surface for interactive content.
+ * Pass `interactive` for cards the user can act on: hover deepens the border
+ * and lifts the card slightly (QuizCore-style restrained elevation).
  */
 export function Panel({
   children,
   className,
+  interactive = false,
   ...rest
-}: { children: ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
+}: { children: ReactNode; className?: string; interactive?: boolean } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-xl2 border border-line bg-surface shadow-card", className)}
+      className={cn(
+        "rounded-xl2 border border-line bg-surface shadow-card",
+        interactive &&
+          "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-[#C3D4CA] hover:shadow-raised",
+        className,
+      )}
       {...rest}
     >
       {children}
@@ -84,7 +92,7 @@ export function DemoPill() {
       Demo data
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 w-56 -translate-x-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-tiny text-ink-soft opacity-0 shadow-pop transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 w-56 -translate-x-1/2 translate-y-1 rounded-lg border border-line bg-surface px-3 py-2 text-tiny text-ink-soft opacity-0 shadow-pop transition-all duration-200 ease-out group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100"
       >
         Prototype values are simulated for demonstration.
       </span>

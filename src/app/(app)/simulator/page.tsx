@@ -22,8 +22,10 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
+import { EASE, DURATION, fadeUp, tabContent, staggerContainer } from "@/lib/motion";
 import {
   fetchFieldState,
   fetchSystemStatus,
@@ -47,7 +49,7 @@ const STRATEGIES = [
   { key: "partial", label: "Partial irrigation" },
 ];
 
-const PROGRESS_STEPS = ["Preparing field state", "Simulating scenarios", "Comparing outcomes", "Decision ready"];
+const PROGRESS_STEPS = ["Preparing field state", "Projecting future conditions", "Comparing outcomes", "Decision ready"];
 
 export default function SimulatorPage() {
   const stateQ = useApiData(() => fetchFieldState("field-a"));
@@ -59,6 +61,7 @@ export default function SimulatorPage() {
   const [rain, setRain] = useState<RainUncertaintyScenario[] | null>(null);
   const [running, setRunning] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
+  const { toast } = useToast();
 
   const run = async () => {
     setRunning(true);
@@ -71,7 +74,10 @@ export default function SimulatorPage() {
     setTimeout(() => {
       clearInterval(advance);
       setProgressStep(PROGRESS_STEPS.length - 1);
-      setTimeout(() => setRunning(false), 250);
+      setTimeout(() => {
+        setRunning(false);
+        toast(`Simulation complete — best action identified: ${sim.data?.scenarios.find((s) => s.key === sim.data?.recommendedKey)?.label ?? "plan ready"}`, "success");
+      }, 250);
     }, 1300);
   };
 
@@ -115,7 +121,7 @@ export default function SimulatorPage() {
 
           <Panel>
             <PanelHeader title="Simulation" />
-            {/* Mode tabs */}
+            {/* Mode tabs — animated underline + sliding content */}
             <div className="flex gap-1 border-b border-line px-4 pt-3">
               {[
                 { key: "strategy" as Mode, label: "Irrigation timing" },
@@ -125,54 +131,87 @@ export default function SimulatorPage() {
                   key={t.key}
                   onClick={() => setMode(t.key)}
                   aria-pressed={mode === t.key}
-                  className={`rounded-t-lg border-b-2 px-3 pb-2.5 pt-1 text-tiny font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-                    mode === t.key ? "border-brand text-brand-dark" : "border-transparent text-ink-muted hover:text-ink"
+                  className={`relative rounded-t-lg px-3 pb-2.5 pt-1 text-tiny font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                    mode === t.key ? "text-brand-dark" : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   {t.label}
+                  {mode === t.key ? (
+                    <motion.span
+                      layoutId="sim-tab-underline"
+                      transition={{ duration: 0.28, ease: EASE }}
+                      className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand"
+                    />
+                  ) : null}
                 </button>
               ))}
             </div>
 
-            {mode === "strategy" ? (
-              <div className="p-4">
-                <div className="mb-2 text-tiny font-medium text-ink-muted">Scenarios to compare</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {STRATEGIES.map((b) => (
-                    <div key={b.key} className="rounded-lg border border-line bg-subtle px-2 py-2 text-center text-tiny text-ink-soft">
-                      {b.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 text-tiny leading-relaxed text-ink-muted">
-                Tests the recommended plan against three rain outcomes: rain arrives as forecast, rain partially
-                arrives, or no rain at all. The verdict shows whether the plan still holds.
-              </div>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {mode === "strategy" ? (
+                <motion.div
+                  key="strategy"
+                  variants={tabContent}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                  className="p-4"
+                >
+                  <div className="mb-2 text-tiny font-medium text-ink-muted">Scenarios to compare</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {STRATEGIES.map((b) => (
+                      <div
+                        key={b.key}
+                        className="rounded-full border border-line bg-subtle px-3 py-1.5 text-center text-tiny text-ink-soft transition-colors duration-150 hover:border-[#C3D4CA] hover:text-ink"
+                      >
+                        {b.label}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="rain"
+                  variants={tabContent}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                  className="p-4 text-tiny leading-relaxed text-ink-muted"
+                >
+                  Tests the recommended plan against three rain outcomes: rain arrives as forecast, rain partially
+                  arrives, or no rain at all. The verdict shows whether the plan still holds.
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="border-t border-line p-4">
               <Button variant="primary" size="lg" className="w-full" onClick={run} disabled={running}>
                 <Play size={15} /> {running ? "Running…" : result ? "Run again" : "Run simulation"}
               </Button>
 
-              {/* Progress */}
+              {/* Progress — steps light up in sequence; no generic spinner */}
               {running ? (
-                <div className="mt-3 space-y-1.5">
+                <motion.div
+                  className="mt-3 space-y-1.5"
+                  variants={staggerContainer(0.05)}
+                  initial="hidden"
+                  animate="show"
+                >
                   {PROGRESS_STEPS.map((s, i) => (
-                    <div key={s} className="flex items-center gap-2 text-tiny">
+                    <motion.div key={s} variants={fadeUp} className="flex items-center gap-2 text-tiny">
                       {i < progressStep ? (
-                        <CheckCircle2 size={13} className="text-success" />
+                        <motion.span initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: EASE }}>
+                          <CheckCircle2 size={13} className="text-success" />
+                        </motion.span>
                       ) : i === progressStep ? (
                         <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
                       ) : (
                         <span className="h-3 w-3 rounded-full border border-line" />
                       )}
                       <span className={i <= progressStep ? "text-ink" : "text-ink-faint"}>{s}</span>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               ) : null}
             </div>
           </Panel>
@@ -181,11 +220,16 @@ export default function SimulatorPage() {
           {result && mode === "strategy" ? (
             <Panel>
               <PanelHeader title="Why this decision?" subtitle={`Recommended: ${result.scenarios.find((s) => s.recommended)?.label ?? "—"}`} />
-              <div className="space-y-3 p-5">
+              <motion.div
+                className="space-y-3 p-5"
+                variants={staggerContainer(0.07, 0.4)}
+                initial="hidden"
+                animate="show"
+              >
                 {result.scenarios
                   .find((s) => s.recommended)
                   ?.factors.map((f, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
+                    <motion.div key={i} variants={fadeUp} className="flex items-start gap-2.5">
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-light text-micro font-semibold text-brand">
                         {i + 1}
                       </span>
@@ -193,13 +237,13 @@ export default function SimulatorPage() {
                         <div className="text-tiny font-medium text-ink">{f.label}</div>
                         <div className="text-tiny text-ink-muted">{f.value}</div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
-                <p className="border-t border-line pt-3 text-tiny leading-relaxed text-ink-muted">
+                <motion.p variants={fadeUp} className="border-t border-line pt-3 text-tiny leading-relaxed text-ink-muted">
                   Waiting is predicted to reduce water consumption while keeping crop stress below the configured{" "}
                   {STRESS_THRESHOLD_PCT}% threshold, with enough carryover moisture for the next decision window.
-                </p>
-              </div>
+                </motion.p>
+              </motion.div>
             </Panel>
           ) : null}
         </div>
@@ -208,7 +252,12 @@ export default function SimulatorPage() {
         <div className="space-y-4">
           {!result && !running ? (
             <Panel className="flex min-h-[420px] items-center justify-center">
-              <div className="max-w-sm p-8 text-center">
+              <motion.div
+                className="max-w-sm p-8 text-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: DURATION.emphasis, ease: EASE }}
+              >
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl2 bg-brand-light">
                   <Sprout size={26} className="text-brand" />
                 </div>
@@ -220,15 +269,41 @@ export default function SimulatorPage() {
                 <Button variant="primary" className="mt-5" onClick={run}>
                   <Play size={14} /> Run simulation
                 </Button>
-              </div>
+              </motion.div>
             </Panel>
           ) : null}
 
           {running ? (
-            <Panel className="flex min-h-[420px] items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-[3px] border-brand border-t-transparent" />
-                <div className="mt-3 text-sm font-medium text-ink">{PROGRESS_STEPS[progressStep]}…</div>
+            <Panel className="flex min-h-[420px] flex-col items-center justify-center p-8">
+              <div className="w-full max-w-xs">
+                <div className="flex items-baseline justify-between">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={progressStep}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.22, ease: EASE }}
+                      className="text-sm font-medium text-ink"
+                    >
+                      {PROGRESS_STEPS[progressStep]}
+                    </motion.div>
+                  </AnimatePresence>
+                  <span className="text-micro text-ink-faint">{progressStep + 1} / {PROGRESS_STEPS.length}</span>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#E3ECE6]">
+                  <motion.div
+                    className="h-full rounded-full bg-brand"
+                    initial={{ width: "5%" }}
+                    animate={{ width: `${((progressStep + 1) / PROGRESS_STEPS.length) * 100}%` }}
+                    transition={{ duration: 0.45, ease: EASE }}
+                  />
+                </div>
+                <div className="mt-6 space-y-2.5">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="skeleton h-16 rounded-xl2" />
+                  ))}
+                </div>
               </div>
             </Panel>
           ) : null}
@@ -236,30 +311,37 @@ export default function SimulatorPage() {
           {/* Scenario cards */}
           {result && !running && mode === "strategy" ? (
             <>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <AnimatePresence>
-                  {result.scenarios
-                    .filter((s) => ["now", "wait6", "wait24"].includes(s.key))
-                    .map((s, i) => (
-                      <motion.div
-                        key={s.key}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1, duration: 0.3 }}
-                        className={`rounded-xl2 border bg-surface p-4 ${
-                          s.recommended ? "border-brand bg-brand-light" : "border-line shadow-card"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-micro font-medium uppercase tracking-wide text-ink-faint">
-                            {s.label}
-                          </span>
-                          {s.recommended ? (
-                            <span className="rounded-md bg-brand px-1.5 py-0.5 text-micro font-semibold text-white">
-                              Recommended
-                            </span>
-                          ) : null}
-                        </div>
+              <motion.div
+                className="grid grid-cols-1 gap-3 md:grid-cols-3"
+                variants={staggerContainer(0.09, 0.05)}
+                initial="hidden"
+                animate="show"
+              >
+                {result.scenarios
+                  .filter((s) => ["now", "wait6", "wait24"].includes(s.key))
+                  .map((s, i) => (
+                    <motion.div
+                      key={s.key}
+                      variants={fadeUp}
+                      className={`group rounded-xl2 border bg-surface p-4 transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-raised ${
+                        s.recommended ? "border-brand bg-brand-light" : "border-line shadow-card hover:border-[#C3D4CA]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-micro font-medium uppercase tracking-wide text-ink-faint">
+                          {s.label}
+                        </span>
+                        {s.recommended ? (
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.6 }}
+                            animate={{ opacity: 1, scale: [1, 1.08, 1] }}
+                            transition={{ duration: 0.35, ease: EASE, delay: 0.35 + i * 0.09 }}
+                            className="rounded-md bg-brand px-1.5 py-0.5 text-micro font-semibold text-white"
+                          >
+                            Recommended
+                          </motion.span>
+                        ) : null}
+                      </div>
                         <div className="mt-2 text-[22px] font-semibold tracking-tight text-ink">{fmtL(s.waterUsedL)}</div>
                         <div className="mt-2 space-y-1.5 text-tiny">
                           <div className="flex justify-between">
@@ -289,10 +371,9 @@ export default function SimulatorPage() {
                             Saves {fmtL(620 - s.waterUsedL)} vs irrigating now
                           </div>
                         ) : null}
-                      </motion.div>
-                    ))}
-                </AnimatePresence>
-              </div>
+                    </motion.div>
+                  ))}
+              </motion.div>
 
               {/* 48h projection */}
               <Panel>

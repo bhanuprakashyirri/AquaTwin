@@ -1,70 +1,172 @@
-import { cn } from "@/lib/utils";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+/**
+ * ============================================================================
+ * AquaTwin Canonical Button System (Derived from QuizCore Architecture)
+ * ============================================================================
+ *
+ * Use these standard components everywhere in the project for 100% consistency:
+ *
+ * 1. <Button> / <AquaButton>
+ *    Native interactive button with hover-lift (-translate-y-0.5), press-scale (0.97),
+ *    optional loading spinner, success checkmark, icons, and pill geometry.
+ *
+ * 2. <LinkButton> / <AquaLink>
+ *    Next.js Link navigation component with identical button styles and physics.
+ *
+ * Key Variants:
+ *  - "primary":       Brand green solid CTA with directional depth (e.g. "Explore Live Demo →")
+ *  - "glass":         Frosted translucent glass with Gaussian blur (e.g. "Sign In" in navbar)
+ *  - "glass-on-dark": Translucent Gaussian blur glass for dark hero/video (e.g. "How It Works")
+ *  - "outline":       Frosted border glass button for secondary actions
+ *  - "secondary":     Light neutral surface pill
+ *  - "dark":          Deep dark forest neutral
+ *  - "danger":        Destructive action
+ *  - "accent":        Subtle soft-tinted action
+ *
+ * Sizing:
+ *  - "sm": h-9,  px-4, text-xs
+ *  - "md": h-11, px-5, text-sm (default)
+ *  - "lg": h-14, px-8, text-base
+ *
+ * Modifiers:
+ *  - noLift={true}:   Disables hover vertical lift (ideal for fixed navbars/headers)
+ *  - fullWidth={true}: Expands to 100% container width
+ *  - icon / iconRight: Pre/post icons with auto-sizing
+ */
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  AquaButton,
+  AquaLink,
+  buttonClasses,
+  BUTTON_BASE,
+  BUTTON_VARIANTS,
+  BUTTON_SIZES,
+  type ButtonVariant,
+  type ButtonSize,
+  type AquaButtonProps,
+  type AquaLinkProps,
+} from "./aqua-button";
 
-const variants: Record<Variant, string> = {
-  primary:
-    "bg-brand text-white hover:bg-brand-dark border border-brand",
-  secondary:
-    "bg-surface text-brand-dark border border-[#BFDCCB] hover:bg-brand-light",
-  ghost: "bg-transparent text-ink-muted hover:bg-subtle hover:text-ink border border-transparent",
-  danger: "bg-danger text-white hover:bg-[#B03E3E] border border-danger",
+export {
+  buttonClasses,
+  BUTTON_BASE,
+  BUTTON_VARIANTS,
+  BUTTON_SIZES,
+  AquaButton,
+  AquaLink,
+};
+export type { ButtonVariant, ButtonSize };
+
+export type Variant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "glass"
+  | "glass-on-dark"
+  | "accent"
+  | "dark"
+  | "danger"
+  | "outline-danger"
+  | "ghost"
+  | "primary-on-dark"
+  | "outline-on-dark"
+  | "success"; // legacy alias
+
+const variantNormalizer = (v: Variant): ButtonVariant => {
+  if (v === "success") return "primary";
+  return v;
 };
 
-const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-tiny",
-  md: "h-9 px-4 text-sm",
-  lg: "h-11 px-5 text-sm font-semibold",
-};
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  size?: ButtonSize;
+  icon?: ReactNode;
+  iconRight?: ReactNode;
+  loading?: boolean;
+  success?: boolean;
+  fullWidth?: boolean;
+  noLift?: boolean;
+  className?: string;
+  children?: ReactNode;
+}
 
-export function Button({
-  variant = "secondary",
-  size = "md",
-  className,
-  children,
-  ...rest
-}: { variant?: Variant; size?: Size; children: ReactNode } & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  function Button(
+    {
+      variant = "secondary",
+      size = "md",
+      icon = null,
+      iconRight = null,
+      loading = false,
+      success = false,
+      fullWidth = false,
+      noLift = false,
+      className = "",
+      children,
+      ...rest
+    },
+    ref
+  ) {
+    return (
+      <AquaButton
+        ref={ref}
+        variant={variantNormalizer(variant)}
+        size={size}
+        icon={icon}
+        iconRight={iconRight}
+        loading={loading}
+        success={success}
+        fullWidth={fullWidth}
+        noLift={noLift}
+        className={className}
+        {...rest}
+      >
+        {children}
+      </AquaButton>
+    );
+  }
+);
+
+export interface LinkButtonProps {
+  href: string;
+  variant?: Variant;
+  size?: ButtonSize;
+  icon?: ReactNode;
+  iconRight?: ReactNode;
+  fullWidth?: boolean;
+  noLift?: boolean;
+  className?: string;
+  children?: ReactNode;
+  external?: boolean;
 }
 
 export function LinkButton({
   href,
   variant = "secondary",
   size = "md",
-  className,
+  icon = null,
+  iconRight = null,
+  fullWidth = false,
+  noLift = false,
+  className = "",
   children,
-}: {
-  href: string;
-  variant?: Variant;
-  size?: Size;
-  className?: string;
-  children: ReactNode;
-}) {
+  external = false,
+}: LinkButtonProps) {
   return (
-    <a
+    <AquaLink
       href={href}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      variant={variantNormalizer(variant)}
+      size={size}
+      icon={icon}
+      iconRight={iconRight}
+      fullWidth={fullWidth}
+      noLift={noLift}
+      className={className}
+      external={external}
     >
       {children}
-    </a>
+    </AquaLink>
   );
 }
+
+export default Button;

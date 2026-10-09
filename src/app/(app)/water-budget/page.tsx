@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Info } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
+import { AnimatedValue } from "@/components/ui/animated-value";
+import { useToast } from "@/components/ui/toast";
+import { EASE, fadeUp, staggerContainer } from "@/lib/motion";
 import { fetchSystemStatus, fetchZones, postOptimize } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { fmtL, stressColor } from "@/lib/format";
@@ -20,15 +23,24 @@ export default function WaterBudgetPage() {
   const [available, setAvailable] = useState(2000);
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [stale, setStale] = useState(true);
+  const [optimizing, setOptimizing] = useState(false);
+  const { toast } = useToast();
 
-  const runOptimize = async (value: number) => {
+  // `silent` suppresses the success toast for the automatic initial run —
+  // feedback belongs to user-initiated optimizations only.
+  const runOptimize = async (value: number, silent = false) => {
+    setOptimizing(true);
     const { data } = await postOptimize(value);
     setResult(data);
     setStale(false);
+    setOptimizing(false);
+    if (!silent) {
+      toast(`Optimization complete — ${fmtL(value)} allocated across ${data.allocations.length} zones`, "success");
+    }
   };
 
   useEffect(() => {
-    runOptimize(2000);
+    runOptimize(2000, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -61,8 +73,8 @@ export default function WaterBudgetPage() {
         actions={
           <div className="flex items-center gap-2">
             <DemoPill />
-            <Button variant="primary" onClick={() => runOptimize(available)}>
-              {stale ? "Run optimization" : "Optimized"}
+            <Button variant="primary" loading={optimizing} onClick={() => runOptimize(available)} className="group">
+              Optimize Water <ArrowRight size={14} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
             </Button>
           </div>
         }
@@ -75,9 +87,14 @@ export default function WaterBudgetPage() {
           { label: "Predicted demand", value: fmtL(totalNeed), tone: "text-ink", bg: "bg-surface", border: "border-line" },
           { label: "Shortfall", value: fmtL(shortfall), tone: shortfall > 0 ? "text-warning" : "text-success", bg: "bg-surface", border: "border-line" },
         ].map((s) => (
-          <div key={s.label} className={`rounded-xl2 border p-5 shadow-card ${s.bg} ${s.border}`}>
+          <div
+            key={s.label}
+            className={`rounded-xl2 border p-5 shadow-card transition-transform duration-200 ease-out hover:-translate-y-0.5 ${s.bg} ${s.border}`}
+          >
             <div className="text-tiny font-medium text-ink-muted">{s.label}</div>
-            <div className={`mt-1 text-[32px] font-semibold leading-tight tracking-tight ${s.tone}`}>{s.value}</div>
+            <div className={`mt-1 text-[32px] font-semibold leading-tight tracking-tight ${s.tone}`}>
+              <AnimatedValue>{s.value}</AnimatedValue>
+            </div>
           </div>
         ))}
       </div>
@@ -109,7 +126,7 @@ export default function WaterBudgetPage() {
                       setAvailable(p);
                       runOptimize(p);
                     }}
-                    className={`rounded-md border px-2.5 py-1 text-tiny font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                    className={`rounded-full border px-3 py-1 text-tiny font-medium transition-[background-color,border-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                       available === p ? "border-brand bg-brand-light text-brand-dark" : "border-line text-ink-muted hover:bg-subtle"
                     }`}
                   >
@@ -156,13 +173,18 @@ export default function WaterBudgetPage() {
             subtitle="Bar shows allocated against required · dashed mark shows the requirement"
             right={result ? <DataBadge tone="neutral">{result.allocations.length} zones</DataBadge> : null}
           />
-          <div className="space-y-5 p-5">
+          <motion.div
+            className="space-y-5 p-5"
+            variants={staggerContainer(0.07)}
+            initial="hidden"
+            animate="show"
+          >
             {(result?.allocations ?? []).map((a, i) => {
               const maxNeed = Math.max(...(result?.allocations ?? []).map((x) => x.needL), 1);
               const pct = (a.allocatedL / maxNeed) * 100;
               const needPct = (a.needL / maxNeed) * 100;
               return (
-                <div key={a.zoneId}>
+                <motion.div key={a.zoneId} variants={fadeUp}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-ink">{a.zoneName}</span>
@@ -178,9 +200,9 @@ export default function WaterBudgetPage() {
                   <div className="relative mt-2 h-3.5 overflow-hidden rounded-md bg-[#EDF2EC]">
                     <motion.div
                       className="h-full rounded-md bg-brand"
-                      initial={{ width: 0 }}
+                      initial={false}
                       animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.6, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.55, ease: EASE }}
                     />
                     <div className="absolute top-0 h-full w-0.5 bg-ink-soft/50" style={{ left: `${needPct}%` }} />
                   </div>
@@ -198,7 +220,7 @@ export default function WaterBudgetPage() {
                       <span className="text-warning">Deferred — lowest benefit per litre</span>
                     ) : null}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
 
@@ -209,7 +231,7 @@ export default function WaterBudgetPage() {
                   : `With ${fmtL(available)} available, ${fmtL(Math.max(0, totalNeed - result.totalAllocatedL))} of the predicted demand stays unmet. The optimizer directs water to the zones where it reduces crop stress the most first.`}
               </div>
             ) : null}
-          </div>
+          </motion.div>
         </Panel>
       </div>
     </div>

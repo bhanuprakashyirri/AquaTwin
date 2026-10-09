@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Database, Plug, RefreshCcw, Satellite, Server, Wifi, Bot } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import { fetchSystemStatus } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 
@@ -47,6 +50,20 @@ const ADAPTERS = [
 
 export default function SettingsPage() {
   const statusQ = useApiData(() => fetchSystemStatus());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const { toast } = useToast();
+
+  const resetDemo = () => {
+    setResetting(true);
+    toast("Demo state cleared — restarting with seeded data", "success");
+    window.setTimeout(() => {
+      if (typeof window !== "undefined") {
+        sessionStorage.clear();
+        window.location.reload();
+      }
+    }, 650);
+  };
 
   return (
     <div className="mx-auto max-w-[1000px]">
@@ -65,19 +82,21 @@ export default function SettingsPage() {
             Sensor readings stream in-process, or over WebSocket when the Python backend is running. Nothing on the
             dashboard represents live real-world measurement.
           </p>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              if (typeof window !== "undefined") {
-                sessionStorage.clear();
-                window.location.reload();
-              }
-            }}
-          >
+          <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
             <RefreshCcw size={14} /> Reset demo
           </Button>
         </div>
       </Panel>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={resetDemo}
+        title="Reset demo?"
+        message="This clears the simulated sensor stream and all in-session state, then reloads the app with fresh seeded data. Nothing outside this browser session is affected."
+        confirmLabel="Reset demo"
+        busy={resetting}
+      />
 
       <Panel className="mt-4">
         <PanelHeader title="Data providers" subtitle="Each demo adapter can be replaced without touching pages or services" />

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
+import { Dropdown } from "@/components/ui/dropdown";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { fetchHistory, fetchSystemStatus } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
@@ -48,8 +49,13 @@ export default function HistoryPage() {
   const decisionBadge = (d: IrrigationEvent["decision"]) =>
     d === "Irrigated" ? <DataBadge tone="good">{d}</DataBadge> : d === "Waited" ? <DataBadge tone="info">{d}</DataBadge> : <DataBadge tone="warn">{d}</DataBadge>;
 
-  const selectCls =
-    "rounded-lg border border-line bg-surface px-2.5 py-1.5 text-tiny text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
+  const zoneOptions = ZONES.map((z) => ({ value: z, label: z }));
+  const decisionOptions = DECISIONS.map((d) => ({ value: d, label: d }));
+  const rowOptions = [
+    { value: 10, label: "10 rows" },
+    { value: 14, label: "14 rows" },
+    { value: 28, label: "All rows" },
+  ];
 
   return (
     <div className="mx-auto max-w-[1440px]">
@@ -67,21 +73,9 @@ export default function HistoryPage() {
             subtitle={`${sorted.length} of ${events.length} records`}
             right={
               <div className="flex flex-wrap items-center gap-2">
-                <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)} aria-label="Filter by zone" className={selectCls}>
-                  {ZONES.map((z) => (
-                    <option key={z}>{z}</option>
-                  ))}
-                </select>
-                <select value={decisionFilter} onChange={(e) => setDecisionFilter(e.target.value)} aria-label="Filter by decision" className={selectCls}>
-                  {DECISIONS.map((d) => (
-                    <option key={d}>{d}</option>
-                  ))}
-                </select>
-                <select value={rowCount} onChange={(e) => setRowCount(Number(e.target.value))} aria-label="Rows shown" className={selectCls}>
-                  <option value={10}>10 rows</option>
-                  <option value={14}>14 rows</option>
-                  <option value={28}>All rows</option>
-                </select>
+                <Dropdown value={zoneFilter} onChange={setZoneFilter} options={zoneOptions} ariaLabel="Filter by zone" />
+                <Dropdown value={decisionFilter} onChange={setDecisionFilter} options={decisionOptions} ariaLabel="Filter by decision" />
+                <Dropdown value={rowCount} onChange={setRowCount} options={rowOptions} ariaLabel="Rows shown" />
               </div>
             }
           />

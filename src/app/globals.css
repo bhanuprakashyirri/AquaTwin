@@ -2,58 +2,294 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   AquaTwin Design System — Typography Foundation
+   Typographic DNA from QuizCore (Plus Jakarta Sans, identical
+   easing system, same rendering philosophy)
+   ============================================================ */
+
 :root {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* ---------- Font Stack (QuizCore DNA) ---------- */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---------- Typography Scale (AquaTwin product hierarchy) ---------- */
+  --text-display:   clamp(2.5rem, 5vw, 4rem);     /* 40–64px — hero headlines only */
+  --text-h1:        clamp(2rem, 3.5vw, 3rem);      /* 32–48px — page heroes */
+  --text-h2:        clamp(1.5rem, 2.5vw, 2.25rem); /* 24–36px — section headers */
+  --text-h3:        1.25rem;                        /* 20px — card/panel titles */
+  --text-body-lg:   1.125rem;                       /* 18px — lead paragraphs */
+  --text-body:      0.9375rem;                      /* 15px — body copy */
+  --text-body-sm:   0.875rem;                       /* 14px — secondary copy */
+  --text-caption:   0.8125rem;                      /* 13px — captions, labels */
+  --text-micro:     0.75rem;                        /* 12px — tiny labels */
+  --text-metric:    2.25rem;                        /* 36px — KPI numbers */
+  --text-technical: 0.8125rem;                      /* 13px — data tables, code */
+
+  /* ---------- Line Heights (QuizCore rhythm) ---------- */
+  --lh-tight:   1.1;
+  --lh-display: 1.08;
+  --lh-heading: 1.2;
+  --lh-body:    1.6;
+  --lh-relaxed: 1.75;
+
+  /* ---------- Letter Spacing (QuizCore philosophy) ---------- */
+  --ls-tightest: -0.03em;
+  --ls-tight:    -0.02em;
+  --ls-heading:  -0.018em;
+  --ls-body:     -0.005em;
+  --ls-wide:      0.05em;
+  --ls-widest:    0.12em;
+
+  /* ---------- Motion (exact QuizCore values) ---------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:      150ms;
+  --dur-base:      280ms;
+  --dur-slow:      420ms;
+
   color-scheme: light;
 }
 
+/* ============================================================
+   Base Styles
+   ============================================================ */
 html,
 body {
   height: 100%;
   overflow-x: hidden;
 }
 
+/* Scrollbars are hidden site-wide — a top progress bar shows position instead (QuizCore standard) */
+html,
+body,
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* QuizCore: font-feature-settings for numerals + ligatures */
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
 body {
   background: #f5f7f4;
-  color: #17352d;
+  color: #163A31;
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: var(--lh-body);
+  letter-spacing: var(--ls-body);
+  /* QuizCore rendering — matching exactly */
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
+/* ============================================================
+   Typography Classes — AquaTwin product hierarchy
+   ============================================================ */
+.text-display {
+  font-size: var(--text-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-tightest);
+  font-weight: 700;
+}
+
+.text-h1 {
+  font-size: var(--text-h1);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-tightest);
+  font-weight: 700;
+}
+
+.text-h2 {
+  font-size: var(--text-h2);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-tight);
+  font-weight: 700;
+}
+
+.text-h3 {
+  font-size: var(--text-h3);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: 600;
+}
+
+.text-body-lg {
+  font-size: var(--text-body-lg);
+  line-height: var(--lh-relaxed);
+  letter-spacing: var(--ls-body);
+}
+
+.text-metric {
+  font-size: var(--text-metric);
+  line-height: 1;
+  letter-spacing: var(--ls-tightest);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.text-label {
+  font-size: var(--text-caption);
+  letter-spacing: var(--ls-wide);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.text-technical {
+  font-family: var(--font-mono);
+  font-size: var(--text-technical);
+  font-feature-settings: "tnum";
+}
+
+/* ============================================================
+   Selection
+   ============================================================ */
 ::selection {
-  background: rgba(47, 107, 88, 0.18);
+  background: rgba(40, 116, 95, 0.16);
+  color: inherit;
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* ============================================================
+   Scrollbars — QuizCore hides them globally
+   ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c9d6ce transparent;
 }
-::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
   background: #c9d6ce;
-  border-radius: 8px;
-  border: 2px solid #f5f7f4;
+  border-radius: 999px;
 }
-::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* MapLibre light styling */
+/* ============================================================
+   Icon nudge — micro-affordance on hover (QuizCore pattern)
+   ============================================================ */
+.icon-nudge {
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.group:hover .icon-nudge,
+.group:focus-visible .icon-nudge {
+  transform: translateX(3px);
+}
+
+/* ============================================================
+   Animations — skeleton + slide + custom
+   ============================================================ */
+@keyframes aqua-shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes aqua-slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes aqua-slide-in-bottom {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes aqua-pulse-brand {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@keyframes aqua-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #edf2ec;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.72), transparent);
+  animation: aqua-shimmer 1.6s infinite;
+}
+
+/* ============================================================
+   Navigation cursor-select prevention (QuizCore pattern)
+   ============================================================ */
+nav a,
+nav button,
+h1, h2, h3, h4, h5, h6,
+label,
+[class*="font-bold"],
+[class*="font-semibold"],
+[class*="text-display"],
+[class*="text-h1"],
+[class*="text-h2"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ============================================================
+   MapLibre GL overrides — premium light styling
+   ============================================================ */
 .maplibregl-ctrl-group {
   background: #ffffff !important;
-  border: 1px solid #dfe7e2 !important;
-  box-shadow: 0 1px 3px rgba(23, 53, 45, 0.08) !important;
-  border-radius: 8px !important;
+  border: 1px solid #dde6e1 !important;
+  box-shadow: 0 2px 8px rgba(23, 53, 45, 0.06) !important;
+  border-radius: 10px !important;
   overflow: hidden;
 }
 .maplibregl-ctrl-group button + button {
-  border-top: 1px solid #dfe7e2 !important;
+  border-top: 1px solid #dde6e1 !important;
 }
 .maplibregl-ctrl-group button span {
-  filter: invert(0.35);
+  filter: invert(0.3) sepia(0.2);
 }
 .maplibregl-canvas:focus {
   outline: none;
+}
+
+/* ============================================================
+   Reduced motion — full respect (QuizCore + accessibility)
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   Safe area utilities (QuizCore mobile-first pattern)
+   ============================================================ */
+.pt-safe { padding-top: max(env(safe-area-inset-top), 0px); }
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+
+/* ============================================================
+   Paper elevation (QuizCore shadow-editorial)
+   ============================================================ */
+.shadow-editorial {
+  box-shadow: 0 2px 12px rgba(22, 58, 49, 0.06), 0 1px 3px rgba(22, 58, 49, 0.04);
+}
+.shadow-float {
+  box-shadow: 0 12px 32px rgba(22, 58, 49, 0.12), 0 4px 8px rgba(22, 58, 49, 0.06);
+}
+.paper-border {
+  border: 1px solid rgba(22, 58, 49, 0.06);
 }
