@@ -210,6 +210,16 @@ body {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-6px); }
 }
+@keyframes aqua-pulse-ring {
+  0%   { transform: scale(0.9);  opacity: 0.8; }
+  50%  { transform: scale(1.35); opacity: 0.25; }
+  100% { transform: scale(0.9);  opacity: 0.8; }
+}
+
+/* Live pulse ring — map markers (ported from the Sih-HailStrom reference) */
+.pulsing-dot {
+  animation: aqua-pulse-ring 2s ease-in-out infinite;
+}
 
 .skeleton {
   position: relative;

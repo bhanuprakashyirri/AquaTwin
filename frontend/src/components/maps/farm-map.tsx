@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl, { type Map as MlMap, type MapGeoJSONFeature } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { LAYERS } from "@/lib/constants";
-import { moistureColor, ndviColor, priorityColor, stressColor, CHART } from "@/lib/format";
+import { LAYERS, MAP_CENTER } from "@/lib/constants";
+import { moistureColor, ndviColor, priorityColor, stressColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { BASEMAPS, BASEMAP_META, type BasemapKey } from "@/components/maps/basemaps";
 import type { Zone } from "@/types";
 
 const LAYER_COLORS: Record<string, (z: Zone) => string> = {
@@ -31,6 +32,14 @@ export interface FarmMapProps {
   sensors?: Array<{ id: string; zoneId: string; kind: string; position: { coordinates: [number, number] }; lastValue: number }>;
   className?: string;
   showLegend?: boolean;
+  /** Basemap shown initially; uncontrolled when omitted. */
+  basemap?: BasemapKey;
+  onBasemapChange?: (b: BasemapKey) => void;
+  showBasemapSwitcher?: boolean;
+  /** Animated telemetry sweep overlay (ported from the Sih-HailStrom radar sweep). */
+  showSweep?: boolean;
+  /** Label rendered on the field centroid marker + popup. */
+  fieldLabel?: string;
 }
 
 const FIELD_GEOM = {
@@ -46,6 +55,15 @@ const FIELD_GEOM = {
   ],
 };
 
+const OVERLAY_META = [
+  { key: "zones", label: "Zones", dot: "#28745F" },
+  { key: "sensors", label: "Sensors", dot: "#537D9B" },
+  { key: "sweep", label: "Sweep", dot: "#B98227" },
+  { key: "boundary", label: "Boundary", dot: "#8A9A92" },
+] as const;
+
+type OverlayKey = (typeof OVERLAY_META)[number]["key"];
+
 export function FarmMap({
   zones,
   layer,
@@ -55,18 +73,39 @@ export function FarmMap({
   sensors = [],
   className,
   showLegend = true,
+  basemap,
+  onBasemapChange,
+  showBasemapSwitcher = true,
+  showSweep = true,
+  fieldLabel = "Field A",
 }: FarmMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
+  const sweepCanvasRef = useRef<HTMLCanvasElement>(null);
+  const animFrameRef = useRef(0);
+  const sweepAngleRef = useRef(0);
+  const fieldMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [ready, setReady] = useState(false);
   const [hover, setHover] = useState<{ x: number; y: number; z: Zone } | null>(null);
   const [sensorHover, setSensorHover] = useState<{ x: number; y: number; kind: string; value: number } | null>(null);
+  const [internalBasemap, setInternalBasemap] = useState<BasemapKey>(basemap ?? "light");
+  const [styleEpoch, setStyleEpoch] = useState(0);
+  const [overlays, setOverlays] = useState<Record<OverlayKey, boolean>>({
+    zones: true,
+    sensors: true,
+    sweep: showSweep,
+    boundary: true,
+  });
   const zonesRef = useRef(zones);
   const onZoneSelectRef = useRef(onZoneSelect);
   const interactRef = useRef(false);
   const fitRef = useRef(false);
+  const initialBasemapRef = useRef<BasemapKey>(basemap ?? "light");
+  const basemapRef = useRef(basemap ?? "light");
   zonesRef.current = zones;
   onZoneSelectRef.current = onZoneSelect;
+  basemapRef.current = basemap ?? internalBasemap;
+  const activeBasemap = basemap ?? internalBasemap;
 
   const zoneFc = useMemo<GeoJSON.FeatureCollection>(() => {
     return {
@@ -98,29 +137,37 @@ export function FarmMap({
     [sensors],
   );
 
-  // init map — light GIS base, fit to field once zones arrive
+  // init map — basemap from the Sih-HailStrom reference set, fit to field once zones arrive
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{ id: "bg", type: "background", paint: { "background-color": "#EDF2EC" } }],
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-      },
-      center: [81.5212, 16.5449],
+      style: BASEMAPS[initialBasemapRef.current],
+      center: MAP_CENTER,
       zoom: 15,
-      attributionControl: false,
+      attributionControl: true,
     });
     mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     map.on("load", () => setReady(true));
     return () => {
       map.remove();
       mapRef.current = null;
     };
   }, []);
+
+  // Basemap switching — ported from the reference WeatherMap. setStyle wipes
+  // every source/layer, so a styleEpoch bump re-runs the data effects and
+  // re-paints zones, sensors, labels and context parcels on the new basemap.
+  const handleBasemapChange = (key: BasemapKey) => {
+    if (key === activeBasemap) return;
+    if (!basemap) setInternalBasemap(key);
+    onBasemapChange?.(key);
+    const map = mapRef.current;
+    if (!map) return;
+    map.setStyle(BASEMAPS[key]);
+    map.once("style.load", () => setStyleEpoch((e) => e + 1));
+  };
 
   // surrounding terrain context: subtle parcels + a farm track, drawn under the field
   useEffect(() => {
@@ -163,7 +210,7 @@ export function FarmMap({
       filter: ["==", ["geometry-type"], "LineString"],
       paint: { "line-color": "#D3CFC2", "line-width": 3 },
     });
-  }, [ready]);
+  }, [ready, styleEpoch]);
 
   // field + zones + sensors + labels.
   // NOTE: sources are created only once real features exist — creating a GeoJSON
@@ -249,6 +296,9 @@ export function FarmMap({
     }
 
     if (zoneFc.features.length > 0 && !map.getLayer("zone-labels")) {
+      // On dark raster basemaps (satellite / thermal / topo) labels flip to
+      // white with a dark halo so they stay legible over imagery.
+      const darkBase = basemapRef.current !== "light";
       map.addLayer({
         id: "zone-labels",
         type: "symbol",
@@ -264,8 +314,8 @@ export function FarmMap({
           "text-letter-spacing": 0.05,
         },
         paint: {
-          "text-color": "#1D493D",
-          "text-halo-color": "#FFFFFF",
+          "text-color": darkBase ? "#FFFFFF" : "#1D493D",
+          "text-halo-color": darkBase ? "rgba(22, 58, 49, 0.85)" : "#FFFFFF",
           "text-halo-width": 1.4,
         },
       });
@@ -362,30 +412,250 @@ export function FarmMap({
         setSensorHover(null);
       });
     }
-  }, [ready, zoneFc, sensorFc]);
+  }, [ready, styleEpoch, zoneFc, sensorFc]);
+
+  // Field centroid marker with popup — adapted from the reference's storm
+  // centroid marker. Markers are DOM elements, so they survive style switches.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    if (fieldMarkerRef.current) {
+      fieldMarkerRef.current.remove();
+      fieldMarkerRef.current = null;
+    }
+
+    const avgMoisture = zones.length ? zones.reduce((s, z) => s + z.moisturePct, 0) / zones.length : 0;
+    const avgStress = zones.length ? zones.reduce((s, z) => s + z.stressRiskPct, 0) / zones.length : 0;
+    const totalNeed = zones.reduce((s, z) => s + z.waterRequirementL, 0);
+
+    const el = document.createElement("div");
+    el.innerHTML = `
+      <div style="position: relative; width: 11px; height: 11px; cursor: pointer;">
+        <span class="pulsing-dot" style="position: absolute; inset: -5px; border-radius: 9999px; border: 2px solid rgba(40, 116, 95, 0.55);"></span>
+        <span style="position: absolute; inset: 0; border-radius: 9999px; background: #28745F; border: 2.5px solid #ffffff; box-shadow: 0 1px 5px rgba(22, 58, 49, 0.45);"></span>
+        <span style="position: absolute; left: 17px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.96); border: 1px solid #DDE6E1; border-radius: 8px; padding: 3px 9px; font-size: 11px; font-weight: 700; color: #163A31; box-shadow: 0 2px 8px rgba(22, 58, 49, 0.12); white-space: nowrap; font-family: inherit;">${fieldLabel}</span>
+      </div>
+    `;
+
+    const popupHtml = `
+      <div style="padding: 2px 4px; min-width: 200px;">
+        <div style="font-weight: 700; color: #163A31; font-size: 13px; margin-bottom: 5px;">${fieldLabel}</div>
+        <div style="font-size: 12px; line-height: 1.8; color: #60746C;">
+          <div style="display: flex; justify-content: space-between; gap: 18px;"><span>Irrigation zones</span><strong style="color: #163A31;">${zones.length}</strong></div>
+          <div style="display: flex; justify-content: space-between; gap: 18px;"><span>Avg moisture</span><strong style="color: #163A31;">${avgMoisture.toFixed(1)}%</strong></div>
+          <div style="display: flex; justify-content: space-between; gap: 18px;"><span>Avg stress risk</span><strong style="color: #163A31;">${avgStress.toFixed(0)}%</strong></div>
+          <div style="display: flex; justify-content: space-between; gap: 18px;"><span>Total water need</span><strong style="color: #163A31;">${totalNeed.toLocaleString("en-US")} L</strong></div>
+        </div>
+      </div>
+    `;
+
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat(MAP_CENTER)
+      .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml))
+      .addTo(map);
+    fieldMarkerRef.current = marker;
+
+    return () => {
+      if (fieldMarkerRef.current) {
+        fieldMarkerRef.current.remove();
+        fieldMarkerRef.current = null;
+      }
+    };
+  }, [ready, zones, fieldLabel]);
+
+  // Size the sweep canvas to the container (device pixels for crisp rendering)
+  useEffect(() => {
+    const canvas = sweepCanvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const resize = () => {
+      canvas.width = Math.max(1, Math.floor(container.clientWidth * dpr));
+      canvas.height = Math.max(1, Math.floor(container.clientHeight * dpr));
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
+  // Animated telemetry sweep overlay — ported from the Sih-HailStrom radar
+  // sweep: range rings, crosshairs and a phosphor-persistence beam that
+  // tracks the field centroid on screen.
+  useEffect(() => {
+    const canvas = sweepCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let frame = 0;
+    const render = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      if (overlays.sweep) {
+        const u = Math.min(window.devicePixelRatio || 1, 2);
+        const map = mapRef.current;
+        let cx = w / 2;
+        let cy = h / 2;
+        if (map) {
+          // Beam pivot follows the field centroid even when the user pans.
+          const p = map.project(MAP_CENTER);
+          cx = p.x * u;
+          cy = p.y * u;
+        }
+        const radius = Math.min(w, h) * 0.44;
+
+        sweepAngleRef.current = (sweepAngleRef.current + 0.028) % (2 * Math.PI);
+        const angle = sweepAngleRef.current;
+
+        // Range rings (25 / 50 / 75 / 100% of sweep radius)
+        ctx.strokeStyle = "rgba(47, 107, 88, 0.13)";
+        ctx.lineWidth = u;
+        for (let r = 0.25; r <= 1.0; r += 0.25) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius * r, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+
+        // Crosshairs
+        ctx.beginPath();
+        ctx.moveTo(cx - radius, cy);
+        ctx.lineTo(cx + radius, cy);
+        ctx.moveTo(cx, cy - radius);
+        ctx.lineTo(cx, cy + radius);
+        ctx.stroke();
+
+        // Sweeping beam with trailing phosphor persistence
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, angle - 0.4, angle);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(83, 125, 155, 0.13)";
+        ctx.fill();
+
+        // Leading edge bright line
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+        ctx.strokeStyle = "rgba(40, 116, 95, 0.85)";
+        ctx.lineWidth = 2 * u;
+        ctx.shadowColor = "#28745F";
+        ctx.shadowBlur = 10 * u;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      frame = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => cancelAnimationFrame(frame);
+  }, [overlays.sweep]);
+
+  // Keep overlay visibility in sync with the map (incl. after style switches)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !map.isStyleLoaded()) return;
+    const setVis = (layerId: string, visible: boolean) => {
+      if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+    };
+    setVis("zone-fill", overlays.zones);
+    setVis("zone-line", overlays.zones);
+    setVis("zone-labels", overlays.zones);
+    setVis("sensor-halo", overlays.sensors);
+    setVis("sensor-dot", overlays.sensors);
+    setVis("field-line", overlays.boundary);
+    setVis("context-fill", overlays.boundary);
+    setVis("context-track", overlays.boundary);
+  }, [overlays, ready, styleEpoch]);
 
   return (
     <div className={cn("relative h-full w-full overflow-hidden rounded-xl2 border border-line bg-[#EDF2EC]", className)}>
-      <div ref={containerRef} className="h-full w-full" />
+      {/* Map canvas */}
+      <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Layer selector */}
-      {onLayerChange ? (
-        <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-0.5 rounded-lg border border-line bg-white/95 p-1 shadow-card backdrop-blur">
-          {LAYERS.map((l) => (
-            <button
-              key={l.key}
-              onClick={() => onLayerChange(l.key)}
-              aria-pressed={layer === l.key}
-              className={cn(
-                "rounded-md px-2.5 py-1.5 text-tiny font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
-                layer === l.key ? "bg-brand-light text-brand-dark" : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {/* Animated telemetry sweep overlay */}
+      <canvas
+        ref={sweepCanvasRef}
+        className="pointer-events-none absolute inset-0 z-[4] h-full w-full opacity-90"
+      />
+
+      {/* Basemap + data layer switchers (top-left) */}
+      <div className="absolute left-3 top-3 z-10 flex flex-col gap-2">
+        {showBasemapSwitcher ? (
+          <div className="flex items-center gap-0.5 rounded-lg border border-line bg-white/95 p-1 shadow-card backdrop-blur">
+            {(Object.keys(BASEMAPS) as BasemapKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleBasemapChange(key)}
+                aria-pressed={activeBasemap === key}
+                title={BASEMAP_META[key].label}
+                className={cn(
+                  "rounded-md px-2 py-1 text-micro font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+                  activeBasemap === key ? "bg-brand-light text-brand-dark" : "text-ink-muted hover:text-ink",
+                )}
+              >
+                {BASEMAP_META[key].short}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Layer selector */}
+        {onLayerChange ? (
+          <div className="flex flex-wrap gap-0.5 rounded-lg border border-line bg-white/95 p-1 shadow-card backdrop-blur">
+            {LAYERS.map((l) => (
+              <button
+                key={l.key}
+                onClick={() => onLayerChange(l.key)}
+                aria-pressed={layer === l.key}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-tiny font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+                  layer === l.key ? "bg-brand-light text-brand-dark" : "text-ink-muted hover:text-ink",
+                )}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Overlay toggles (top-right) */}
+      <div className="absolute right-3 top-3 z-10 flex max-w-[46%] flex-wrap justify-end gap-1.5">
+        {OVERLAY_META.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => setOverlays((prev) => ({ ...prev, [o.key]: !prev[o.key] }))}
+            aria-pressed={overlays[o.key]}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-micro font-semibold shadow-card backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+              overlays[o.key] ? "border-line bg-white/95 text-ink" : "border-line bg-white/70 text-ink-faint hover:text-ink-muted",
+            )}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: o.dot, opacity: overlays[o.key] ? 1 : 0.35 }}
+            />
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Active basemap chip (top-center) */}
+      <div className="absolute left-1/2 top-3 z-10 hidden -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-white/95 px-3.5 py-1.5 shadow-card backdrop-blur sm:flex">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
+        <span className="text-micro font-bold uppercase tracking-wider text-ink">
+          {BASEMAP_META[activeBasemap].chip}
+        </span>
+      </div>
 
       {/* Legend */}
       {showLegend ? (
