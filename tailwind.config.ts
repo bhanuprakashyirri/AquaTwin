@@ -7,7 +7,10 @@ import type { Config } from "tailwindcss";
  * Motion: QuizCore easing tokens
  */
 const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
+  content: [
+    "./frontend/src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
   theme: {
     extend: {
       // ── Colors ──────────────────────────────────────────────
