@@ -39,7 +39,7 @@ class Sensor(BaseModel):
     depthCm: Optional[int] = None
     lastValue: float
     lastReadingAt: str
-    status: Literal["live", "demo", "offline"] = "demo"
+    status: Literal["live", "offline", "unconfigured"] = "offline"
 
 
 class Zone(BaseModel):
@@ -97,7 +97,7 @@ class SatelliteObservation(BaseModel):
     time: str
     ndvi: float
     ndwi: float
-    source: str = "Satellite-derived demo layer"
+    source: str = "Sentinel-2 MSI"
 
 
 class IrrigationEvent(BaseModel):
@@ -208,8 +208,8 @@ class WaterFingerprint(BaseModel):
 
 
 class SystemStatus(BaseModel):
-    sensorStream: Literal["LIVE", "DEMO"]
-    weather: Literal["UPDATED"]
-    satelliteLastSync: str
-    digitalTwin: Literal["ACTIVE"]
-    demoMode: bool = True
+    sensorStream: Literal["LIVE", "OFFLINE"]
+    weather: Literal["CONNECTED", "UNAVAILABLE"]
+    satelliteLastSync: Optional[str] = None
+    digitalTwin: Literal["ACTIVE", "IDLE"]
+    demoMode: bool = False

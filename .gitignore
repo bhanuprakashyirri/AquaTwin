@@ -20,6 +20,11 @@ __pycache__/
 backend/app/**/__pycache__/
 backend/tests/__pycache__/
 
+# Database
+*.db
+*.sqlite3
+backend/*.db
+
 # Environment variables
 .env
 .env.local

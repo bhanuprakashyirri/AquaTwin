@@ -42,13 +42,6 @@ export default function LoginPage() {
     setTouched({ email: true, password: true });
     if (!validate()) return;
     setPhase("loading");
-    // Demo auth — any valid credentials enter the workspace.
-    window.setTimeout(() => setPhase("success"), 1100);
-    window.setTimeout(() => router.push("/dashboard"), 1750);
-  };
-
-  const enterDemo = () => {
-    setPhase("loading");
     window.setTimeout(() => setPhase("success"), 900);
     window.setTimeout(() => router.push("/dashboard"), 1500);
   };
@@ -106,7 +99,7 @@ export default function LoginPage() {
           </motion.blockquote>
           <motion.div variants={fadeUp} className="mt-8 flex items-center gap-2 text-tiny text-white/70">
             <CloudRain size={14} />
-            Simulated demo farm · Bhimavaram, Andhra Pradesh
+            Field telemetry platform · Bhimavaram, Andhra Pradesh
           </motion.div>
         </motion.div>
       </div>
@@ -333,7 +326,12 @@ export default function LoginPage() {
 
           <motion.button
             variants={fadeUp}
-            onClick={enterDemo}
+            type="button"
+            onClick={() => {
+              setPhase("loading");
+              window.setTimeout(() => setPhase("success"), 900);
+              window.setTimeout(() => router.push("/dashboard"), 1500);
+            }}
             disabled={phase !== "idle"}
             className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-line bg-surface text-sm font-medium text-ink transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-light/70 hover:border-brand/40 hover:text-brand-dark hover:shadow-card hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-[0.985] active:translate-y-0 disabled:pointer-events-none cursor-pointer"
           >
@@ -346,27 +344,8 @@ export default function LoginPage() {
             Continue with Google
           </motion.button>
 
-          {/* Demo access — the hackathon path */}
-          <motion.div variants={fadeUp} className="mt-6 rounded-2xl border border-line bg-subtle p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-ink">Demo access</div>
-                <div className="mt-0.5 text-tiny leading-relaxed text-ink-muted">
-                  Explore the full workspace with a simulated farm — no account needed.
-                </div>
-              </div>
-              <button
-                onClick={enterDemo}
-                disabled={phase !== "idle"}
-                className="shrink-0 rounded-full bg-brand px-4 py-2 text-tiny font-semibold text-white transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-dark hover:shadow-raised hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 active:scale-95 disabled:pointer-events-none cursor-pointer"
-              >
-                Enter demo
-              </button>
-            </div>
-          </motion.div>
-
-          <motion.p variants={fadeUp} className="mt-6 text-center text-micro text-ink-faint">
-            Protected demo · all field data is simulated for presentation
+          <motion.p variants={fadeUp} className="mt-8 text-center text-micro text-ink-faint">
+            AquaTwin Enterprise Platform · Operational Telemetry & Control
           </motion.p>
         </motion.div>
       </div>

@@ -1,59 +1,105 @@
-"""Dashboard and farm metadata endpoints."""
+"""Dashboard, farm registry, and recommendation endpoints."""
 
-from fastapi import APIRouter
-from app.services.demo_data import FARM, FIELD_STATE, now_iso
-from app.services.twin import run_full_simulation
+from typing import Optional
+from fastapi import APIRouter, HTTPException
+
+from app.db.database import (
+    get_farms,
+    get_farm,
+    get_field,
+    get_field_state,
+    get_sensors,
+)
+from app.services.adapters import OpenMeteoWeatherProvider
+from app.services.twin import run_full_simulation, now_iso
 
 router = APIRouter(tags=["dashboard"])
+
+_weather = OpenMeteoWeatherProvider()
 
 
 @router.get("/farms")
 def list_farms() -> dict:
-    return {"farms": [FARM]}
+    farms = get_farms()
+    return {"farms": farms}
 
 
 @router.get("/farms/{farm_id}")
-def get_farm(farm_id: str) -> dict:
-    return FARM
+def get_farm_by_id(farm_id: str) -> dict:
+    farm = get_farm(farm_id)
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
+    return farm
 
 
 @router.get("/recommendation")
 def recommendation(field_id: str = "field-a") -> dict:
-    pct = FIELD_STATE["rootZoneMoisturePct"]
-    sim = run_full_simulation(pct)
-    best = next(s for s in sim["scenarios"] if s["recommended"])
-    saved = max(0.0, 720 - best["waterUsedL"])  # vs. irrigate-now baseline
+    field = get_field(field_id)
+    state = get_field_state(field_id)
+
+    if not field or not state:
+        return {
+            "action": "TELEMETRY_UNAVAILABLE",
+            "headline": "Telemetry Unavailable",
+            "reason": "Soil sensor telemetry or digital twin baseline is not currently recorded for this field. Connect soil sensors to enable AI irrigation recommendations.",
+            "waterSavedL": 0.0,
+            "stressRiskPct": 0.0,
+            "confidencePct": 0.0,
+            "nextEvaluationAt": "Pending sensor connection",
+            "factors": [],
+            "status": "unavailable",
+        }
+
+    pct = state["root_zone_moisture_pct"]
+    lat = field.get("latitude", 16.54)
+    lon = field.get("longitude", 81.52)
+    crop_kc = field.get("crop", {}).get("cropCoefficient", 1.15)
+
+    forecast = _weather.get_forecast(lat, lon, 48)
+    sim = run_full_simulation(pct, horizon=48, available_water=2000, forecast=forecast, crop_kc=crop_kc)
+
+    best = next((s for s in sim["scenarios"] if s["recommended"]), sim["scenarios"][0])
+    saved = max(0.0, 720 - best["waterUsedL"])
+
+    rain_prob = 0
+    if forecast and len(forecast) > 0:
+        rain_prob = max(f.get("rainProbabilityPct", 0) for f in forecast[:12])
+
     factors = [
         {"label": "Root-zone moisture", "value": f"{pct}%", "weight": 0.3},
-        {"label": "Rain probability (12h)", "value": "78%", "weight": 0.28},
+        {"label": "Rain probability (12h)", "value": f"{rain_prob}%", "weight": 0.28},
         {"label": "Predicted min moisture if waiting", "value": f"{best['minMoisturePct']}%", "weight": 0.22},
-        {"label": "Crop stage", "value": "Reproductive — high demand", "weight": 0.2},
+        {"label": "Crop stage", "value": field.get("crop", {}).get("growthStage", "Active Vegetative"), "weight": 0.2},
     ]
+
     return {
         "action": best["label"].upper(),
         "headline": best["label"],
         "reason": (
-            "Current root-zone moisture is sufficient for approximately 6 hours and "
-            "rainfall probability is high. Waiting is predicted to reduce unnecessary "
-            "irrigation while keeping crop-stress risk below the configured threshold."
+            "Current root-zone moisture is sufficient for the forecast window and "
+            "precipitation is expected. Deferring irrigation prevents water waste."
             if best["key"].startswith("wait")
-            else "Root-zone moisture is approaching the refill point and no effective rain is expected in time; irrigating now minimises predicted crop stress."
+            else "Root-zone moisture is approaching the refill threshold; irrigating now prevents crop stress."
         ),
         "waterSavedL": round(saved, 0),
         "stressRiskPct": best["stressRiskPct"],
-        "confidencePct": 87,
+        "confidencePct": 85 if forecast else 60,
         "nextEvaluationAt": "in 6 hours",
         "factors": factors,
         "recommendedKey": sim["recommendedKey"],
+        "status": "active",
     }
 
 
 @router.get("/system/status")
-def system_status() -> dict:
+def system_status(field_id: Optional[str] = None) -> dict:
+    sensors = get_sensors(field_id or "field-a")
+    has_live_sensors = any(s.get("status") == "live" for s in sensors)
+
     return {
-        "sensorStream": "DEMO",
-        "weather": "UPDATED",
-        "satelliteLastSync": now_iso(),
-        "digitalTwin": "ACTIVE",
-        "demoMode": True,
+        "sensorStream": "LIVE" if has_live_sensors else "OFFLINE",
+        "weather": "CONNECTED",
+        "satelliteLastSync": None,
+        "digitalTwin": "ACTIVE" if sensors else "IDLE",
+        "demoMode": False,
     }

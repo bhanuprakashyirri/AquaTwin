@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DataSource } from "@/services/api";
+
+export type DataSource = "live" | "api" | "database" | "offline" | "fallback" | string;
 
 interface ApiState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
-  source: DataSource | null;
+  source?: DataSource | null;
   retry: () => void;
 }
 
-/** Fetch hook with retry. Errors are surfaced but pages render demo fallbacks. */
+/** Fetch hook with retry and honest error surfacing. */
 export function useApiData<T>(
-  fetcher: () => Promise<{ data: T; source: DataSource }>,
+  fetcher: () => Promise<{ data: T | null; source?: DataSource; error?: string | null }>,
   deps: unknown[] = [],
 ): ApiState<T> {
   const [data, setData] = useState<T | null>(null);
@@ -30,10 +31,11 @@ export function useApiData<T>(
     setError(null);
     fetcherRef
       .current()
-      .then(({ data, source }) => {
+      .then((res) => {
         if (cancelled) return;
-        setData(data);
-        setSource(source);
+        setData(res.data);
+        if (res.source) setSource(res.source);
+        if (res.error) setError(res.error);
         setLoading(false);
       })
       .catch((e) => {

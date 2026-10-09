@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { CloudRain, Droplets, RefreshCcw, Sprout, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
+import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button, LinkButton } from "@/components/ui/button";
 import { FarmMap } from "@/components/maps/farm-map";
 import { WhyDrawer } from "@/components/ui/assistant";
@@ -42,7 +42,6 @@ export default function TwinPage() {
         title="Field Twin"
         subtitle="A live virtual representation of the field and its water balance."
         status={statusQ.data}
-        actions={<DemoPill />}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.9fr_1fr]">

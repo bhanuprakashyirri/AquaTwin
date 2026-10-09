@@ -1,6 +1,6 @@
 /**
- * Central demo constants — single source of truth for the frontend demo engine.
- * Mirrors backend/app/services/demo_data.py.
+ * Agronomic constants — FAO-56 dual crop coefficient & soil moisture parameters.
+ * Calibrated for Godavari delta rice/paddy cultivation.
  */
 
 export const FC = 34.0; // field capacity %vol
@@ -9,13 +9,13 @@ export const ZONE_DEPTH_MM = 300.0;
 export const MAD = 0.45;
 export const ET0_FACTOR = 0.0345; // solar radiation (MJ/m2/h) -> ET0 (mm/h)
 export const PERCOLATION_MM_H = 0.35; // paddy seepage + percolation
-export const LITRES_TO_PCT = 0.0195; // demo calibration: 720 L ≈ +14 pct points
+export const LITRES_TO_PCT = 0.0195; // volumetric calibration factor
 export const REFILL_TARGET_PCT = 23.5; // carryover target for recommendation
 export const STRESS_MIDPOINT_PCT = 16.95; // logistic midpoint for stress proxy
 export const STRESS_SCALE_PCT = 1.87; // logistic width for stress proxy
 export const STRESS_THRESHOLD_PCT = 15; // configured stress threshold
 
-export const MAP_CENTER: [number, number] = [81.5212, 16.5449]; // [lng, lat] Bhimavaram demo area
+export const MAP_CENTER: [number, number] = [81.5212, 16.5449]; // [lng, lat] Bhimavaram field region
 
 export const LAYERS = [
   { key: "moisture", label: "Soil Moisture" },

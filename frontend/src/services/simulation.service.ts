@@ -1,40 +1,42 @@
 /**
- * Simulation and What-If scenario services.
+ * Simulation and What-If scenario services — Production.
  */
 
-import { rainUncertainty, runFullSimulation } from "@/lib/demo-engine";
-import { tryFetch, withFallback } from "./api-client";
+import { tryFetch } from "./api-client";
 import type { RainUncertaintyScenario, SimulationResult } from "@/types";
 
-export function postSimulation(
+export async function postSimulation(
   startPct: number,
   horizon = 48,
-  availableWater = 2000
+  availableWater = 2000,
+  fieldId = "field-a"
 ) {
-  return withFallback(
-    () =>
-      tryFetch<SimulationResult>("/api/simulation/run", {
-        method: "POST",
-        body: JSON.stringify({
-          startMoisturePct: startPct,
-          horizonHours: horizon,
-          availableWaterL: availableWater,
-        }),
-      }),
-    () => runFullSimulation(startPct, horizon, availableWater)
-  );
+  const data = await tryFetch<SimulationResult>("/api/simulation/run", {
+    method: "POST",
+    body: JSON.stringify({
+      startMoisturePct: startPct,
+      horizonHours: horizon,
+      availableWaterL: availableWater,
+      fieldId,
+    }),
+  });
+  return { data, error: data ? null : "Simulation computation failed" };
 }
 
-export function postRainUncertainty(strategy = "wait6") {
-  return withFallback(
-    () =>
-      tryFetch<{ scenarios: RainUncertaintyScenario[] }>(
-        "/api/simulation/rain-uncertainty",
-        {
-          method: "POST",
-          body: JSON.stringify({ strategy }),
-        }
-      ),
-    () => ({ scenarios: rainUncertainty(strategy) })
+export async function postRainUncertainty(
+  strategy = "wait6",
+  startPct = 24.6,
+  fieldId = "field-a"
+) {
+  const data = await tryFetch<{ scenarios: RainUncertaintyScenario[] }>(
+    "/api/simulation/rain-uncertainty",
+    {
+      method: "POST",
+      body: JSON.stringify({ strategy, startMoisturePct: startPct, fieldId }),
+    }
   );
+  return {
+    data: data ?? { scenarios: [] },
+    error: data ? null : "Uncertainty simulation failed",
+  };
 }

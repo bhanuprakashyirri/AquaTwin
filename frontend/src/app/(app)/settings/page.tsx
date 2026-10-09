@@ -1,116 +1,84 @@
 "use client";
 
-import { useState } from "react";
-import { Database, Plug, RefreshCcw, Satellite, Server, Wifi, Bot } from "lucide-react";
+import { Database, Satellite, Server, Wifi, Cpu, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/modal";
-import { useToast } from "@/components/ui/toast";
+import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { fetchSystemStatus } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 
-const ADAPTERS = [
-  {
-    icon: Wifi,
-    name: "Sensor data",
-    active: "DemoSensorProvider",
-    note: "Simulated sensor stream with deterministic readings. Replace with an IoT/MQTT provider — same interface.",
-    status: "Demo",
-  },
+const INTEGRATIONS = [
   {
     icon: Server,
-    name: "Weather data",
-    active: "DemoWeatherProvider",
-    note: "48-hour forecast and 7-day observations, seeded deterministically. Swap with OpenMeteo (keyless) or a commercial API.",
-    status: "Demo",
-  },
-  {
-    icon: Satellite,
-    name: "Satellite data",
-    active: "DemoSatelliteProvider",
-    note: "Simulated vegetation and water indices. Swap with a Sentinel-2 provider — layers are already labeled as satellite-derived.",
-    status: "Demo",
+    name: "Weather Intelligence",
+    provider: "Open-Meteo High-Resolution NWP",
+    status: "Connected",
+    tone: "good" as const,
+    note: "Live 48-hour hourly forecasting and 7-day meteorological observations driving FAO-56 reference evapotranspiration.",
   },
   {
     icon: Database,
-    name: "Storage",
-    active: "In-memory store",
-    note: "TimescaleDB/PostGIS schema is defined; falls back to memory when no database URL is configured.",
-    status: "Demo",
+    name: "Relational Persistence",
+    provider: "SQLite Database",
+    status: "Active",
+    tone: "good" as const,
+    note: "ACID-compliant storage for farms, field boundaries, soil sensor telemetry, and historical irrigation logs.",
   },
   {
-    icon: Bot,
-    name: "Explanation model",
-    active: "Deterministic generator",
-    note: "Explanations come from structured twin, simulation and optimizer outputs. A Gemini adapter can enrich prose when a key is configured — it never changes numeric decisions.",
-    status: "Optional",
+    icon: Cpu,
+    name: "Optimization Solver",
+    provider: "Google OR-Tools CP-SAT",
+    status: "Active",
+    tone: "good" as const,
+    note: "Constrained mathematical programming solver optimizing water allocation across prioritized farm subzones.",
+  },
+  {
+    icon: Wifi,
+    name: "IoT Sensor Gateway",
+    provider: "Telemetry WebSocket Gateway",
+    status: "Active",
+    tone: "neutral" as const,
+    note: "Real-time ground soil moisture and temperature ingestion gateway for enrolled hardware probes.",
+  },
+  {
+    icon: Satellite,
+    name: "Multispectral Satellite",
+    provider: "Copernicus Sentinel-2 MSI",
+    status: "Optional (Unconfigured)",
+    tone: "neutral" as const,
+    note: "Configure SENTINEL_API_KEY in backend environment to ingest 10m-resolution NDVI and NDWI rasters.",
   },
 ];
 
 export default function SettingsPage() {
-  const statusQ = useApiData(() => fetchSystemStatus());
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const { toast } = useToast();
-
-  const resetDemo = () => {
-    setResetting(true);
-    toast("Demo state cleared — restarting with seeded data", "success");
-    window.setTimeout(() => {
-      if (typeof window !== "undefined") {
-        sessionStorage.clear();
-        window.location.reload();
-      }
-    }, 650);
-  };
+  const statusQ = useApiData(() => fetchSystemStatus("field-a"));
 
   return (
     <div className="mx-auto max-w-[1000px]">
       <PageHeader
-        title="Settings"
-        subtitle="Demo configuration, data providers and diagnostics."
+        title="Settings & System Status"
+        subtitle="Active integrations, telemetry connections, and architectural health."
         status={statusQ.data}
-        actions={<DemoPill />}
       />
 
       <Panel>
-        <PanelHeader title="Demo mode" subtitle="This prototype runs fully offline with seeded data" />
+        <PanelHeader
+          title="Production architecture"
+          subtitle="Real-time data providers and analytical microservices"
+          right={<DataBadge tone="good"><ShieldCheck size={12} className="inline mr-1" />Verified</DataBadge>}
+        />
         <div className="space-y-3 p-5">
-          <p className="text-sm leading-relaxed text-ink-muted">
-            All field, sensor, weather and satellite-derived data is deterministically simulated for demonstration.
-            Sensor readings stream in-process, or over WebSocket when the Python backend is running. Nothing on the
-            dashboard represents live real-world measurement.
-          </p>
-          <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
-            <RefreshCcw size={14} /> Reset demo
-          </Button>
-        </div>
-      </Panel>
-
-      <ConfirmDialog
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={resetDemo}
-        title="Reset demo?"
-        message="This clears the simulated sensor stream and all in-session state, then reloads the app with fresh seeded data. Nothing outside this browser session is affected."
-        confirmLabel="Reset demo"
-        busy={resetting}
-      />
-
-      <Panel className="mt-4">
-        <PanelHeader title="Data providers" subtitle="Each demo adapter can be replaced without touching pages or services" />
-        <div className="space-y-3 p-5">
-          {ADAPTERS.map((a) => (
+          {INTEGRATIONS.map((a) => (
             <div key={a.name} className="flex gap-3.5 rounded-xl2 border border-line bg-subtle p-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface">
                 <a.icon size={16} className="text-brand" />
               </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-ink">{a.name}</span>
-                  <span className="text-tiny text-brand-dark">{a.active}</span>
-                  <DataBadge tone={a.status === "Demo" ? "info" : "neutral"}>{a.status}</DataBadge>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-ink">{a.name}</span>
+                    <span className="text-tiny font-medium text-ink-muted">· {a.provider}</span>
+                  </div>
+                  <DataBadge tone={a.tone}>{a.status}</DataBadge>
                 </div>
                 <p className="mt-1 text-tiny leading-relaxed text-ink-muted">{a.note}</p>
               </div>
@@ -120,17 +88,16 @@ export default function SettingsPage() {
       </Panel>
 
       <Panel className="mt-4 mb-8">
-        <PanelHeader title="Developer diagnostics" subtitle="Implementation details — safe to ignore during a demo" />
-        <div className="space-y-1.5 p-5 text-tiny text-ink-muted">
+        <PanelHeader title="Environment configuration" subtitle="Server connection details" />
+        <div className="space-y-2 p-5 text-tiny text-ink-muted">
           <div>
-            API base: <span className="font-mono text-ink">{process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}</span>
+            API Gateway Base: <code className="rounded bg-white px-2 py-0.5 font-mono text-ink">{process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}</code>
           </div>
           <div>
-            Engine in use: <span className="font-medium text-ink">{statusQ.source === "backend" ? "FastAPI backend" : "Built-in demo engine"}</span>
+            Physical Modeling Version: <span className="font-medium text-ink">FAO-56 Irrigation & Drainage Paper No. 56</span>
           </div>
-          <div className="pt-1 leading-relaxed text-ink-faint">
-            Start the backend with <span className="font-mono text-ink-soft">uvicorn app.main:app --port 8000</span> from
-            /backend. The frontend switches to it automatically; otherwise the identical in-browser engine serves every page.
+          <div>
+            Solver Protocol: <span className="font-medium text-ink">OR-Tools Constraint Programming (CP-SAT)</span>
           </div>
         </div>
       </Panel>

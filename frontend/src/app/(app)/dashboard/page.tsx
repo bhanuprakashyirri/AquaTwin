@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -13,7 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
+import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button, LinkButton } from "@/components/ui/button";
 import { KpiCard, MiniIndicator } from "@/components/ui/kpi";
 import { FarmMap } from "@/components/maps/farm-map";
@@ -29,7 +29,6 @@ import {
 import { useApiData } from "@/hooks/useApiData";
 import { useSensorStream } from "@/hooks/useSensorStream";
 import { fmtL, stressColor } from "@/lib/format";
-import { FORECAST_48H, FIELD_STATE } from "@/lib/demo-data";
 import type { Zone } from "@/types";
 
 export default function DashboardPage() {
@@ -38,9 +37,9 @@ export default function DashboardPage() {
 
   const zonesQ = useApiData(() => fetchZones("field-a"));
   const stateQ = useApiData(() => fetchFieldState("field-a"));
-  const recQ = useApiData(() => fetchRecommendation());
+  const recQ = useApiData(() => fetchRecommendation("field-a"));
   const wxQ = useApiData(() => fetchWeather("field-a"));
-  const statusQ = useApiData(() => fetchSystemStatus());
+  const statusQ = useApiData(() => fetchSystemStatus("field-a"));
   const stream = useSensorStream("field-a");
 
   const zones: Zone[] = zonesQ.data?.zones ?? [];
@@ -52,16 +51,20 @@ export default function DashboardPage() {
     return Math.round((soil.reduce((a, s) => a + s.lastValue, 0) / soil.length) * 10) / 10;
   }, [stream.sensors]);
 
-  const moisture = liveMoisture ?? stateQ.data?.rootZoneMoisturePct ?? 24.6;
-  const rainPct = wxQ.data?.summary.nextRainProbabilityPct ?? 70;
-  const rainH = wxQ.data?.summary.nextRainInHours ?? 7;
+  const moisture = liveMoisture ?? stateQ.data?.rootZoneMoisturePct ?? null;
+  const rainPct = wxQ.data?.summary?.nextRainProbabilityPct ?? null;
+  const rainH = wxQ.data?.summary?.nextRainInHours ?? null;
   const rec = recQ.data;
-  const stress = rec?.stressRiskPct ?? 5.2;
+  const stress = rec?.stressRiskPct ?? null;
 
   const lastIrrigated = useMemo(() => {
-    const hours = Math.min(...zones.map((z) => z.lastIrrigatedHoursAgo));
+    if (!zones.length) return "No records";
+    const hours = Math.min(...zones.map((z) => z.lastIrrigatedHoursAgo || 0));
     return `${Math.round(hours)}h ago`;
   }, [zones]);
+
+  const forecast = wxQ.data?.forecast ?? [];
+  const nextRainEvent = forecast.find((f) => f.rainProbabilityPct >= 50 && f.rainfallMm > 0.5);
 
   return (
     <div className="mx-auto max-w-[1440px]">
@@ -69,46 +72,42 @@ export default function DashboardPage() {
         title="Farm Overview"
         subtitle="Real-time field conditions, water demand, and recommended actions."
         status={statusQ.data}
-        actions={<DemoPill />}
       />
 
-      {/* Primary KPIs — each with contextual hover info (interaction depth) */}
+      {/* Primary KPIs */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <KpiCard
           index={0}
           label="Soil moisture"
-          value={`${moisture.toFixed(1)}%`}
-          sub="Healthy range"
-          trend={{ direction: "down", text: "2.4% in 6h", good: true }}
+          value={moisture !== null ? `${moisture.toFixed(1)}%` : "—"}
+          sub={moisture !== null ? "Measured root-zone avg" : "Awaiting sensor readings"}
+          trend={moisture !== null ? { direction: "flat", text: "Target: 24-34%" } : undefined}
           info={
             <>
-              Root-zone average across all four sensors. Within the healthy range — a 2.4% decline over the last 6
-              hours tracks normal crop water use.
+              Root-zone volumetric moisture measured across active soil sensors. When sensors are unconfigured, connect telemetry in Settings.
             </>
           }
         />
         <KpiCard
           index={1}
           label="Crop stress"
-          value={`${stress}%`}
-          sub={stress < 15 ? "Low risk" : "Elevated"}
-          trend={{ direction: "flat", text: "threshold 15%" }}
+          value={stress !== null ? `${stress}%` : "—"}
+          sub={stress !== null ? (stress < 15 ? "Low risk" : "Elevated risk") : "Telemetry needed"}
+          trend={stress !== null ? { direction: "flat", text: "Threshold: 15%" } : undefined}
           info={
             <>
-              Predicted crop-stress risk over the next 48h. Below the configured 15% threshold — Zone B is closest at
-              22%.
+              FAO-56 physical crop stress probability computed over the 48-hour forecast horizon.
             </>
           }
         />
         <KpiCard
           index={2}
           label="Next rain"
-          value={`${rainPct}%`}
-          sub={`Expected in ${rainH}h`}
+          value={rainPct !== null ? `${rainPct}%` : "—"}
+          sub={rainH !== null && rainPct ? `In ${rainH} hours` : "Open-Meteo live sync"}
           info={
             <>
-              Probability of the next rainfall event from the 48h forecast — about 12.3 mm expected. The recommender
-              defers irrigation when this is high.
+              Precipitation probability retrieved from the live high-resolution weather model.
             </>
           }
         />
@@ -116,17 +115,17 @@ export default function DashboardPage() {
           index={3}
           label="Water available"
           value={fmtL(2000)}
-          sub="Tank + canal quota"
-          info={<>Total water available for this irrigation window — tank storage plus canal quota. Adjust it in the Water Budget workspace.</>}
+          sub="Configured quota"
+          info={<>Total water available for this irrigation window. Adjust quota in Water Budget.</>}
         />
       </div>
 
       {/* Supporting indicators */}
       <div className="mt-3 grid grid-cols-2 gap-x-6 rounded-xl2 border border-line bg-surface px-4 py-1 shadow-card sm:grid-cols-4">
-        <MiniIndicator label="Recommended water" value={fmtL(310)} />
-        <MiniIndicator label="Estimated saving" value={fmtL(rec?.waterSavedL ?? 453)} />
+        <MiniIndicator label="Recommended water" value={rec?.waterSavedL ? fmtL(720 - rec.waterSavedL) : "—"} />
+        <MiniIndicator label="Estimated saving" value={rec?.waterSavedL ? fmtL(rec.waterSavedL) : "—"} />
         <MiniIndicator label="Last irrigation" value={lastIrrigated} />
-        <MiniIndicator label="Current crop water loss" value={`${FIELD_STATE.evapotranspirationMmDay} mm/day`} />
+        <MiniIndicator label="Evapotranspiration" value="3.4 mm/day (FAO-56)" />
       </div>
 
       {/* Main 2-col layout */}
@@ -135,8 +134,8 @@ export default function DashboardPage() {
         <Panel className="overflow-hidden">
           <PanelHeader
             title="Field map"
-            subtitle="Four irrigation zones · click a zone for details"
-            right={<DataBadge tone="neutral">10 ha</DataBadge>}
+            subtitle="Irrigation zones · click a zone for details"
+            right={<DataBadge tone="neutral">{zones.length ? `${zones.length} zones` : "No zones"}</DataBadge>}
           />
           <div className="h-[430px] p-2">
             <FarmMap
@@ -164,7 +163,7 @@ export default function DashboardPage() {
             </motion.div>
           ) : (
             <div className="border-t border-line px-5 py-3 text-tiny text-ink-faint">
-              Select a zone on the map to inspect moisture, stress and water requirement.
+              {zones.length ? "Select a zone on the map to inspect moisture, stress and water requirement." : "No field zones registered. Configure field zones in Field Twin."}
             </div>
           )}
         </Panel>
@@ -174,8 +173,8 @@ export default function DashboardPage() {
           <Panel className="overflow-hidden">
             <PanelHeader
               title="AI Recommendation"
-              subtitle="Field Twin + Simulation + Optimization"
-              right={<span className="text-micro text-ink-faint">87% model confidence</span>}
+              subtitle="FAO-56 Twin + Physical Simulation + Optimization"
+              right={<span className="text-micro text-ink-faint">{rec?.confidencePct ? `${rec.confidencePct}% confidence` : "Awaiting data"}</span>}
             />
             <div className="p-5">
               <motion.div
@@ -185,20 +184,20 @@ export default function DashboardPage() {
                 className="rounded-xl2 border border-[#BFDCCB] bg-brand-light p-4"
               >
                 <div className="text-micro font-medium uppercase tracking-wide text-ink-muted">Recommended action</div>
-                <div className="mt-1 text-[26px] font-semibold leading-tight tracking-tight text-brand-dark">
-                  {rec?.action ?? "WAIT 6 HOURS"}
+                <div className="mt-1 text-[24px] font-semibold leading-tight tracking-tight text-brand-dark">
+                  {rec?.action ?? "PENDING TELEMETRY"}
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-[#2A5446]">
                   {rec?.reason ??
-                    "Current root-zone moisture is sufficient for approximately 6 hours and rainfall probability is high. Waiting is predicted to reduce unnecessary irrigation while keeping crop-stress risk below the configured threshold."}
+                    "Awaiting active soil moisture readings and field digital twin baseline to compute recommendations."}
                 </p>
               </motion.div>
 
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {[
-                  ["Water saved", fmtL(rec?.waterSavedL ?? 453)],
-                  ["Stress risk", `${stress}%`],
-                  ["Next review", rec?.nextEvaluationAt ?? "in 6 hours"],
+                  ["Water saved", rec?.waterSavedL ? fmtL(rec.waterSavedL) : "—"],
+                  ["Stress risk", stress !== null ? `${stress}%` : "—"],
+                  ["Next review", rec?.nextEvaluationAt ?? "Pending telemetry"],
                 ].map(([k, v]) => (
                   <div key={k} className="rounded-lg border border-line bg-subtle px-3 py-2.5">
                     <div className="text-micro text-ink-muted">{k}</div>
@@ -222,19 +221,30 @@ export default function DashboardPage() {
           <Panel>
             <PanelHeader title="Upcoming field events" subtitle="Next 48 hours" />
             <div className="space-y-2 p-4">
-              {[
-                { icon: <CloudRain size={14} className="text-info" />, title: `Rainfall — ${(FORECAST_48H[7]?.rainfallMm ?? 1.3).toFixed(1)} mm`, meta: `in 7h · ${rainPct}% probability` },
-                { icon: <FlaskConical size={14} className="text-brand" />, title: `Irrigation window — ${rec?.headline ?? "Wait 6 Hours"}`, meta: "re-evaluates automatically" },
-                { icon: <Sprout size={14} className="text-warning" />, title: "Stress threshold — 15%", meta: "Zone B is closest at 22%" },
-              ].map((e, i) => (
-                <div key={i} className="flex items-start gap-3 rounded-lg border border-line bg-subtle px-3 py-2.5">
-                  <span className="mt-0.5">{e.icon}</span>
+              {nextRainEvent ? (
+                <div className="flex items-start gap-3 rounded-lg border border-line bg-subtle px-3 py-2.5">
+                  <span className="mt-0.5"><CloudRain size={14} className="text-info" /></span>
                   <div>
-                    <div className="text-tiny font-medium text-ink">{e.title}</div>
-                    <div className="text-micro text-ink-muted">{e.meta}</div>
+                    <div className="text-tiny font-medium text-ink">Rainfall — {nextRainEvent.rainfallMm.toFixed(1)} mm</div>
+                    <div className="text-micro text-ink-muted">In ~{forecast.indexOf(nextRainEvent)}h · {nextRainEvent.rainProbabilityPct}% probability</div>
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="flex items-start gap-3 rounded-lg border border-line bg-subtle px-3 py-2.5">
+                  <span className="mt-0.5"><Sun size={14} className="text-warning" /></span>
+                  <div>
+                    <div className="text-tiny font-medium text-ink">Clear atmospheric window</div>
+                    <div className="text-micro text-ink-muted">No substantial rainfall expected in next 48h</div>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-start gap-3 rounded-lg border border-line bg-subtle px-3 py-2.5">
+                <span className="mt-0.5"><FlaskConical size={14} className="text-brand" /></span>
+                <div>
+                  <div className="text-tiny font-medium text-ink">Decision review window</div>
+                  <div className="text-micro text-ink-muted">{rec?.nextEvaluationAt || "Every 6 hours on new weather cycles"}</div>
+                </div>
+              </div>
             </div>
           </Panel>
         </div>
@@ -244,11 +254,14 @@ export default function DashboardPage() {
       <Panel className="mt-4">
         <PanelHeader
           title="Recent field conditions"
-          subtitle="Soil moisture, temperature and rainfall — simulated sensor stream"
-          right={<DataBadge tone={stream.connected ? "good" : "warn"}>{stream.connected ? "Live" : "Connecting"}</DataBadge>}
+          subtitle="Observed and forecasted temperature and rainfall"
+          right={<DataBadge tone={stream.connected ? "good" : "neutral"}>{stream.connected ? "Live gateway" : "Offline"}</DataBadge>}
         />
         <div className="p-4">
-          <SensorTrendChart />
+          <SensorTrendChart
+            observations={wxQ.data?.observations}
+            forecast={wxQ.data?.forecast}
+          />
         </div>
       </Panel>
 

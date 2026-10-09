@@ -20,7 +20,7 @@ import {
   YAxis,
 } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
-import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
+import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
@@ -86,7 +86,6 @@ export default function SimulatorPage() {
         title="What-If Simulator"
         subtitle="Compare future irrigation decisions before releasing water."
         status={statusQ.data}
-        actions={<DemoPill />}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">

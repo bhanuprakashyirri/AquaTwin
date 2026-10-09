@@ -1,17 +1,28 @@
-"""AquaTwin backend — FastAPI application factory."""
+"""AquaTwin backend — Production FastAPI application factory."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import logger
-from app.services.demo_data import FARM as DEMO_FARM
+from app.db.database import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize relational tables on startup
+    init_db()
+    logger.info("AquaTwin database tables initialized.")
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=settings.DESCRIPTION,
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -28,10 +39,15 @@ app.add_middleware(
 @app.get("/api/health", tags=["health"])
 @app.get("/api/v1/health", tags=["health"])
 def health() -> dict:
-    return {"status": "ok", "service": "aquatwin", "farm": DEMO_FARM["name"]}
+    return {
+        "status": "ok",
+        "service": "aquatwin",
+        "environment": settings.APP_ENV,
+        "database": "sqlite_connected",
+    }
 
 
-# Mount routers: supports both legacy /api and versioned /api/v1
+# Mount API routers
 app.include_router(api_router, prefix="/api")
 app.include_router(api_router, prefix="/api/v1")
 

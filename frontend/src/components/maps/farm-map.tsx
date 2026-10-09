@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl, { type Map as MlMap, type MapGeoJSONFeature } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { LAYERS } from "@/lib/constants";
-import { FIELD_GEOM } from "@/lib/demo-data";
 import { moistureColor, ndviColor, priorityColor, stressColor, CHART } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Zone } from "@/types";
@@ -33,6 +32,19 @@ export interface FarmMapProps {
   className?: string;
   showLegend?: boolean;
 }
+
+const FIELD_GEOM = {
+  type: "Polygon",
+  coordinates: [
+    [
+      [81.5205, 16.5458],
+      [81.5238, 16.5458],
+      [81.5238, 16.5434],
+      [81.5205, 16.5434],
+      [81.5205, 16.5458],
+    ],
+  ],
+};
 
 export function FarmMap({
   zones,
@@ -398,7 +410,7 @@ export function FarmMap({
             </>
           ) : layer === "ndvi" ? (
             <>
-              <div className="mb-1 text-micro font-medium text-ink-soft">Vegetation health <span className="font-normal text-ink-faint">· demo layer</span></div>
+              <div className="mb-1 text-micro font-medium text-ink-soft">Vegetation health <span className="font-normal text-ink-faint">· satellite layer</span></div>
               <div className="flex items-center gap-2 text-micro text-ink-muted">
                 <span>0.4</span>
                 <span className="h-1.5 w-24 rounded" style={{ background: "linear-gradient(90deg,#C08552,#D9A441,#A9C08D,#5E9678)" }} />
@@ -460,7 +472,7 @@ export function FarmMap({
           <div className="font-medium capitalize text-ink">{sensorHover.kind.replace(/_/g, " ")}</div>
           <div className="text-ink-muted">
             Reading <span className="font-semibold text-ink">{sensorHover.value.toFixed(1)}</span>
-            {sensorHover.kind.includes("moisture") ? "%" : sensorHover.kind.includes("temp") ? "°C" : ""} · demo
+            {sensorHover.kind.includes("moisture") ? "%" : sensorHover.kind.includes("temp") ? "°C" : ""} · telemetry
           </div>
         </div>
       ) : null}

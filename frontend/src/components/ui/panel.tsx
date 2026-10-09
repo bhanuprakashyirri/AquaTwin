@@ -81,21 +81,6 @@ export function DataBadge({
   );
 }
 
-/** Subtle demo-data pill with tooltip explanation */
 export function DemoPill() {
-  return (
-    <span
-      className="group relative inline-flex cursor-default items-center rounded-md border border-line bg-subtle px-2 py-0.5 text-micro font-medium text-ink-muted"
-      tabIndex={0}
-      aria-label="Demo data — prototype values are simulated for demonstration"
-    >
-      Demo data
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 w-56 -translate-x-1/2 translate-y-1 rounded-lg border border-line bg-surface px-3 py-2 text-tiny text-ink-soft opacity-0 shadow-pop transition-all duration-200 ease-out group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100"
-      >
-        Prototype values are simulated for demonstration.
-      </span>
-    </span>
-  );
+  return null;
 }

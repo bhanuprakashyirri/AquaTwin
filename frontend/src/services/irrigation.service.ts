@@ -1,53 +1,55 @@
 /**
- * Irrigation optimization, history, and water fingerprint services.
+ * Irrigation optimization, history, and water fingerprint services — Production.
  */
 
-import { IRRIGATION_HISTORY, ZONES } from "@/lib/demo-data";
-import { optimizeWater } from "@/lib/demo-engine";
-import { tryFetch, withFallback } from "./api-client";
-import type { IrrigationEvent, OptimizationResult } from "@/types";
+import { tryFetch } from "./api-client";
+import type { IrrigationEvent, OptimizationResult, Zone } from "@/types";
 
-export function postOptimize(availableWaterL: number) {
-  return withFallback(
-    () =>
-      tryFetch<OptimizationResult>("/api/water-budget/optimize", {
-        method: "POST",
-        body: JSON.stringify({ availableWaterL }),
-      }),
-    () => optimizeWater(ZONES, availableWaterL)
-  );
+export async function postOptimize(
+  availableWaterL: number,
+  fieldId = "field-a",
+  zones?: Zone[]
+) {
+  const data = await tryFetch<OptimizationResult>("/api/water-budget/optimize", {
+    method: "POST",
+    body: JSON.stringify({ availableWaterL, fieldId, zones }),
+  });
+  return {
+    data: data ?? {
+      availableWaterL,
+      totalNeedL: 0,
+      totalAllocatedL: 0,
+      allocations: [],
+      constraintStatus: "No zones registered",
+      waterSavedL: 0,
+      explanation: "No active field zones registered to allocate water.",
+      solver: "N/A",
+    },
+    error: data ? null : "Optimization failed",
+  };
 }
 
-export function fetchHistory(fieldId: string) {
-  return withFallback(
-    () =>
-      tryFetch<{ events: IrrigationEvent[] }>(`/api/fields/${fieldId}/history`),
-    () => ({ events: IRRIGATION_HISTORY })
-  );
+export async function fetchHistory(fieldId: string) {
+  const data = await tryFetch<{ events: IrrigationEvent[] }>(`/api/fields/${fieldId}/history`);
+  return {
+    data: data ?? { events: [] },
+    error: data ? null : "History unavailable",
+  };
 }
 
-export function fetchWaterFingerprint() {
-  return withFallback(
-    () =>
-      tryFetch<{
-        moistureRetention: number;
-        dryingRatePctPerDay: number;
-        irrigationResponsePct: number;
-        rainResponsePct: number;
-        recoveryHours: number;
-        notes: string[];
-      }>("/api/analytics/water-fingerprint"),
-    () => ({
-      moistureRetention: 72,
-      dryingRatePctPerDay: 4.6,
-      irrigationResponsePct: 13.8,
-      rainResponsePct: 9.2,
-      recoveryHours: 26,
-      notes: [
-        "Clay-loam subzones retain moisture roughly 30% longer than sandy-loam subzones.",
-        "Night-time ETc drops irrigation demand by ~40% versus midday peaks.",
-        "The model learns how this field responds to irrigation and environmental conditions.",
-      ],
-    })
-  );
+export async function fetchWaterFingerprint(fieldId: string = "field-a") {
+  const data = await tryFetch<{
+    status: string;
+    moistureRetention: number;
+    dryingRatePctPerDay: number;
+    irrigationResponsePct: number;
+    rainResponsePct: number;
+    recoveryHours: number;
+    notes: string[];
+  }>(`/api/analytics/water-fingerprint?field_id=${fieldId}`);
+
+  return {
+    data,
+    error: data ? null : "Water fingerprint unavailable",
+  };
 }

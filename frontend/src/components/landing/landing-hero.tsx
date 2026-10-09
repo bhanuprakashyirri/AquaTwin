@@ -148,9 +148,9 @@ export function LandingHero() {
                 variants={fadeUp}
                 className="mt-8 flex flex-wrap items-center gap-3.5"
               >
-                {/* Primary: Explore Live Demo */}
+                {/* Primary: Launch Platform */}
                 <AquaLink href="/dashboard" variant="primary" size="lg">
-                  Explore Live Demo
+                  Launch Platform
                   <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
                 </AquaLink>
 

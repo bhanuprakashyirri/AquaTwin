@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
-import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
+import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Dropdown } from "@/components/ui/dropdown";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { fetchHistory, fetchSystemStatus } from "@/services/api";
@@ -16,7 +16,7 @@ const DECISIONS = ["All decisions", "Irrigated", "Waited", "Partial"];
 
 export default function HistoryPage() {
   const histQ = useApiData(() => fetchHistory("field-a"));
-  const statusQ = useApiData(() => fetchSystemStatus());
+  const statusQ = useApiData(() => fetchSystemStatus("field-a"));
   const [zoneFilter, setZoneFilter] = useState("All zones");
   const [decisionFilter, setDecisionFilter] = useState("All decisions");
   const [rowCount, setRowCount] = useState(14);
@@ -39,7 +39,7 @@ export default function HistoryPage() {
         .slice(0, 10)
         .reverse()
         .map((e) => ({
-          label: `${new Date(e.date).getDate()}/${new Date(e.date).getMonth() + 1} ${e.zone.split(" ")[1]}`,
+          label: `${new Date(e.date).getDate()}/${new Date(e.date).getMonth() + 1} ${e.zone.split(" ")[1] || ""}`,
           predicted: e.predictedRequirementL,
           applied: e.appliedWaterL,
         })),
@@ -61,78 +61,86 @@ export default function HistoryPage() {
     <div className="mx-auto max-w-[1440px]">
       <PageHeader
         title="Irrigation History"
-        subtitle="Every irrigation decision with its predicted requirement, actual response, and reason."
+        subtitle="Chronological log of past irrigation actions, predicted requirements and soil moisture response."
         status={statusQ.data}
-        actions={<DemoPill />}
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.7fr_1fr]">
-        <Panel>
-          <PanelHeader
-            title="Decision log"
-            subtitle={`${sorted.length} of ${events.length} records`}
-            right={
-              <div className="flex flex-wrap items-center gap-2">
-                <Dropdown value={zoneFilter} onChange={setZoneFilter} options={zoneOptions} ariaLabel="Filter by zone" />
-                <Dropdown value={decisionFilter} onChange={setDecisionFilter} options={decisionOptions} ariaLabel="Filter by decision" />
-                <Dropdown value={rowCount} onChange={setRowCount} options={rowOptions} ariaLabel="Rows shown" />
-              </div>
-            }
-          />
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-left text-tiny">
-              <thead>
-                <tr className="border-b border-line text-micro font-medium text-ink-faint">
-                  <th className="px-5 py-2.5 font-medium">Date</th>
-                  <th className="px-4 py-2.5 font-medium">Zone</th>
-                  <th className="px-4 py-2.5 font-medium">Applied</th>
-                  <th className="px-4 py-2.5 font-medium">Predicted</th>
-                  <th className="px-4 py-2.5 font-medium">Moisture response</th>
-                  <th className="px-4 py-2.5 font-medium">Decision</th>
-                  <th className="px-5 py-2.5 font-medium">Reason</th>
+      <Panel>
+        <PanelHeader title="Recent applications" subtitle="Predicted requirement vs actual applied water" />
+        <div className="p-4">
+          {chartData.length ? (
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -14 }}>
+                  <CartesianGrid stroke={CHART.grid} vertical={false} />
+                  <XAxis dataKey="label" {...AXIS_STYLE} />
+                  <YAxis {...AXIS_STYLE} />
+                  <ChartTooltip formatter={(v, name) => `${fmtL(Number(v))} (${name})`} />
+                  <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: "#60746C" }} />
+                  <Bar dataKey="predicted" name="Predicted Need" fill="#8FA694" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="applied" name="Applied" fill="#28745F" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex h-[180px] items-center justify-center text-tiny text-ink-muted">
+              No irrigation records are available yet.
+            </div>
+          )}
+        </div>
+      </Panel>
+
+      <Panel className="mt-4">
+        <PanelHeader
+          title="All events"
+          subtitle={`${events.length} total events`}
+          right={
+            <div className="flex flex-wrap items-center gap-2">
+              <Dropdown value={zoneFilter} onChange={setZoneFilter} options={zoneOptions} />
+              <Dropdown value={decisionFilter} onChange={setDecisionFilter} options={decisionOptions} />
+              <Dropdown value={rowCount} onChange={setRowCount} options={rowOptions} />
+            </div>
+          }
+        />
+        <div className="overflow-x-auto">
+          {sorted.length ? (
+            <table className="w-full text-left text-tiny">
+              <thead className="border-b border-line bg-subtle text-micro font-medium text-ink-muted">
+                <tr>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Zone</th>
+                  <th className="px-4 py-3 text-right">Applied</th>
+                  <th className="px-4 py-3 text-right">Predicted need</th>
+                  <th className="px-4 py-3 text-right">Moisture response</th>
+                  <th className="px-4 py-3">Decision</th>
+                  <th className="px-4 py-3">Reason</th>
                 </tr>
               </thead>
-              <tbody>
-                {sorted.map((e, i) => (
-                  <tr key={i} className="border-b border-line/60 transition-colors last:border-0 hover:bg-subtle/60">
-                    <td className="px-5 py-3 text-ink">{fmtDate(e.date)}</td>
-                    <td className="px-4 py-3 font-medium text-ink">{e.zone}</td>
-                    <td className="px-4 py-3 text-ink">{e.appliedWaterL > 0 ? fmtL(e.appliedWaterL) : "—"}</td>
-                    <td className="px-4 py-3 text-ink-muted">{fmtL(e.predictedRequirementL)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`font-medium ${e.moistureResponsePct > 8 ? "text-success" : "text-warning"}`}>
-                        {e.appliedWaterL > 0 ? "+" : ""}
-                        {e.moistureResponsePct}%
-                      </span>
+              <tbody className="divide-y divide-line">
+                {sorted.map((e) => (
+                  <tr key={e.id || `${e.date}-${e.zone}`} className="hover:bg-subtle/50">
+                    <td className="px-4 py-3 font-medium text-ink">{fmtDate(e.date)}</td>
+                    <td className="px-4 py-3 text-ink-soft">{e.zone}</td>
+                    <td className="px-4 py-3 text-right font-medium text-ink">{fmtL(e.appliedWaterL)}</td>
+                    <td className="px-4 py-3 text-right text-ink-muted">{fmtL(e.predictedRequirementL)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-success">
+                      {e.moistureResponsePct > 0 ? `+${e.moistureResponsePct.toFixed(1)}%` : "0%"}
                     </td>
                     <td className="px-4 py-3">{decisionBadge(e.decision)}</td>
-                    <td className="px-5 py-3 text-ink-muted">{e.reason}</td>
+                    <td className="max-w-md truncate px-4 py-3 text-ink-muted" title={e.reason}>
+                      {e.reason}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        </Panel>
-
-        <Panel>
-          <PanelHeader title="Prediction vs actual" subtitle="Selected records" />
-          <div className="p-4">
-            <div style={{ height: 420 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 4 }}>
-                  <CartesianGrid stroke={CHART.grid} horizontal={false} />
-                  <XAxis type="number" {...AXIS_STYLE} />
-                  <YAxis type="category" dataKey="label" width={64} {...AXIS_STYLE} />
-                  <ChartTooltip formatter={(v) => `${v} L`} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "#68776F" }} iconSize={8} />
-                  <Bar dataKey="predicted" name="Predicted" fill={CHART.alternative} radius={[0, 3, 3, 0]} maxBarSize={10} />
-                  <Bar dataKey="applied" name="Applied" fill={CHART.recommended} radius={[0, 3, 3, 0]} maxBarSize={10} />
-                </BarChart>
-              </ResponsiveContainer>
+          ) : (
+            <div className="p-8 text-center text-tiny text-ink-muted">
+              No irrigation records are available yet.
             </div>
-          </div>
-        </Panel>
-      </div>
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

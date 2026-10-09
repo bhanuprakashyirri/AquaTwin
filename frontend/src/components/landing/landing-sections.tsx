@@ -41,7 +41,7 @@ import {
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { fadeUp, riseUp, staggerContainer } from "@/lib/motion";
 import { fmtL } from "@/lib/format";
-import { ZONES } from "@/lib/demo-data";
+import type { Zone } from "@/types";
 
 const FarmMap = dynamic(() => import("@/components/maps/farm-map").then((m) => ({ default: m.FarmMap })), {
   ssr: false,
@@ -323,6 +323,77 @@ export function ShiftSection() {
    Off-white section — real interactive GIS map + zone inspector
    ================================================================ */
 
+const PREVIEW_ZONES: Zone[] = [
+  {
+    id: "zone-a",
+    name: "Zone A — North Paddy",
+    areaHa: 2.4,
+    soilType: "Clay Loam",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[81.5205, 16.5458], [81.5222, 16.5458], [81.5222, 16.5446], [81.5205, 16.5446], [81.5205, 16.5458]]],
+    },
+    moisturePct: 24.2,
+    stressRiskPct: 8.5,
+    waterRequirementL: 520,
+    rainExposure: "Medium",
+    lastIrrigatedHoursAgo: 14,
+    ndvi: 0.72,
+    priority: 3,
+  },
+  {
+    id: "zone-b",
+    name: "Zone B — Central Lowland",
+    areaHa: 3.1,
+    soilType: "Silty Clay",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[81.5222, 16.5458], [81.5238, 16.5458], [81.5238, 16.5446], [81.5222, 16.5446], [81.5222, 16.5458]]],
+    },
+    moisturePct: 18.1,
+    stressRiskPct: 22.4,
+    waterRequirementL: 1420,
+    rainExposure: "High",
+    lastIrrigatedHoursAgo: 26,
+    ndvi: 0.68,
+    priority: 1,
+  },
+  {
+    id: "zone-c",
+    name: "Zone C — East Terrace",
+    areaHa: 2.2,
+    soilType: "Sandy Clay Loam",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[81.5205, 16.5446], [81.5222, 16.5446], [81.5222, 16.5434], [81.5205, 16.5434], [81.5205, 16.5446]]],
+    },
+    moisturePct: 21.0,
+    stressRiskPct: 14.0,
+    waterRequirementL: 780,
+    rainExposure: "Medium",
+    lastIrrigatedHoursAgo: 18,
+    ndvi: 0.75,
+    priority: 2,
+  },
+  {
+    id: "zone-d",
+    name: "Zone D — South Canal Border",
+    areaHa: 2.3,
+    soilType: "Clay",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[81.5222, 16.5446], [81.5238, 16.5446], [81.5238, 16.5434], [81.5222, 16.5434], [81.5222, 16.5446]]],
+    },
+    moisturePct: 26.5,
+    stressRiskPct: 4.1,
+    waterRequirementL: 310,
+    rainExposure: "Low",
+    lastIrrigatedHoursAgo: 8,
+    ndvi: 0.79,
+    priority: 4,
+  },
+];
+
 export function TwinSection() {
   const [layer, setLayer] = useState("moisture");
   const [selectedId, setSelectedId] = useState("zone-b");
@@ -335,7 +406,7 @@ export function TwinSection() {
   ];
 
   const currentZone = useMemo(() => {
-    return ZONES.find((z) => z.id === selectedId) || ZONES[1];
+    return PREVIEW_ZONES.find((z) => z.id === selectedId) || PREVIEW_ZONES[1];
   }, [selectedId]);
 
   return (
@@ -382,7 +453,7 @@ export function TwinSection() {
           <div className="overflow-hidden rounded-2xl border border-line shadow-card">
             <div className="h-[460px] w-full">
               <FarmMap
-                zones={ZONES}
+                zones={PREVIEW_ZONES}
                 layer={layer}
                 selectedZoneId={selectedId}
                 onZoneSelect={(id) => setSelectedId(id || "zone-b")}
@@ -884,7 +955,7 @@ export function FinalCtaSection() {
             className="mt-6 text-base leading-[1.75] text-white/60 sm:text-lg"
           >
             Move from scheduled irrigation to decisions built around the future state of your field.
-            No setup required — explore the live interactive demo now.
+            Connect your sensors and weather feeds for real-time telemetry.
           </motion.p>
 
           <motion.div variants={fadeUp} className="mt-10 flex flex-wrap items-center gap-4">
@@ -892,12 +963,12 @@ export function FinalCtaSection() {
               Explore AquaTwin <ArrowRight size={15} />
             </AquaLink>
             <AquaLink href="/login" variant="secondary" size="lg">
-              View Demo
+              Sign In
             </AquaLink>
           </motion.div>
 
           <motion.div variants={fadeUp} className="mt-8 text-xs text-white/30">
-            Simulated sensor streams · Offline prototype · No sign-up required
+            Real-time IoT streams · Physical twin dynamics · Secure farm telemetry
           </motion.div>
         </motion.div>
 

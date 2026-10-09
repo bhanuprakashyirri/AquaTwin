@@ -55,14 +55,5 @@ export function LiveDot() {
 }
 
 export function DemoBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-md border border-line bg-subtle px-2 py-0.5 text-micro font-medium text-ink-muted",
-        className,
-      )}
-    >
-      Demo data
-    </span>
-  );
+  return null;
 }

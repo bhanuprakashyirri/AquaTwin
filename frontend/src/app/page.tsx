@@ -127,7 +127,7 @@ export default function LandingPage() {
                   noLift
                   iconRight={<ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />}
                 >
-                  Open Demo
+                  Dashboard
                 </AquaLink>
 
                 {/* Mobile hamburger */}
@@ -169,7 +169,7 @@ export default function LandingPage() {
                         Sign in
                       </AquaLink>
                       <AquaLink href="/dashboard" variant="primary" size="sm" className="flex-1 justify-center">
-                        Open Demo
+                        Dashboard
                       </AquaLink>
                     </div>
                   </div>

@@ -201,7 +201,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <div className="text-[10px] text-ink-faint">Lead Agronomist</div>
           </div>
           <span className="inline-flex items-center rounded-full bg-[#E8F5EE] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-dark">
-            Demo
+            Active
           </span>
         </div>
       </div>

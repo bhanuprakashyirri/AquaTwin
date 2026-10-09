@@ -1,17 +1,8 @@
 /**
- * Field Twin, zones, sensors, satellite, and weather services.
+ * Field Twin, zones, sensors, satellite, and weather services — Production.
  */
 
-import {
-  FIELD,
-  FIELD_STATE,
-  FORECAST_48H,
-  OBSERVATIONS_7D,
-  SATELLITE_SERIES,
-  SENSORS,
-  ZONES,
-} from "@/lib/demo-data";
-import { tryFetch, withFallback } from "./api-client";
+import { tryFetch } from "./api-client";
 import type {
   Field,
   FieldTwinState,
@@ -22,83 +13,74 @@ import type {
   Zone,
 } from "@/types";
 
-export function fetchField(fieldId: string) {
-  return withFallback(
-    () => tryFetch<Field>(`/api/fields/${fieldId}`),
-    () => FIELD
-  );
+export async function fetchField(fieldId: string) {
+  const data = await tryFetch<Field>(`/api/fields/${fieldId}`);
+  return { data, error: data ? null : "Field not found" };
 }
 
-export function fetchFieldState(fieldId: string) {
-  return withFallback(
-    () => tryFetch<FieldTwinState>(`/api/fields/${fieldId}/state`),
-    () => ({ ...FIELD_STATE, updatedAt: new Date().toISOString() })
-  );
+export async function fetchFieldState(fieldId: string) {
+  const data = await tryFetch<FieldTwinState>(`/api/fields/${fieldId}/state`);
+  return { data, error: data ? null : "Field digital twin state not recorded" };
 }
 
-export function fetchZones(fieldId: string) {
-  return withFallback(
-    () => tryFetch<{ zones: Zone[] }>(`/api/fields/${fieldId}/zones`),
-    () => ({ zones: ZONES })
-  );
+export async function fetchZones(fieldId: string) {
+  const data = await tryFetch<{ zones: Zone[]; zoneStates: any[] }>(`/api/fields/${fieldId}/zones`);
+  return {
+    data: data ?? { zones: [], zoneStates: [] },
+    error: data ? null : "Zones unavailable",
+  };
 }
 
-export function fetchWeather(fieldId: string) {
-  return withFallback(
-    () =>
-      tryFetch<{
-        source: string;
-        forecast: WeatherForecastRow[];
-        observations: WeatherObservationRow[];
-        summary: {
-          nextRainProbabilityPct: number;
-          nextRainInHours: number;
-          tempNowC: number;
-        };
-      }>(`/api/fields/${fieldId}/weather`),
-    () => {
-      let nextRainH = 0;
-      let nextRainP = 0;
-      for (let h = 0; h < FORECAST_48H.length; h++) {
-        if (
-          FORECAST_48H[h].rainProbabilityPct >= 50 &&
-          FORECAST_48H[h].rainfallMm > 0.5
-        ) {
-          nextRainH = h;
-          nextRainP = FORECAST_48H[h].rainProbabilityPct;
-          break;
-        }
-      }
-      return {
-        source: "Demo Data",
-        forecast: FORECAST_48H,
-        observations: OBSERVATIONS_7D,
-        summary: {
-          nextRainProbabilityPct: nextRainP || 68,
-          nextRainInHours: nextRainH || 7,
-          tempNowC: FORECAST_48H[0].temperatureC,
-        },
-      };
-    }
-  );
+export async function fetchWeather(fieldId: string) {
+  const data = await tryFetch<{
+    source: string;
+    status?: string;
+    forecast: WeatherForecastRow[];
+    observations: WeatherObservationRow[];
+    summary: {
+      nextRainProbabilityPct: number;
+      nextRainInHours: number;
+      tempNowC: number;
+    } | null;
+    error?: string;
+  }>(`/api/fields/${fieldId}/weather`);
+
+  return {
+    data: data ?? {
+      source: "Open-Meteo",
+      status: "unavailable",
+      forecast: [],
+      observations: [],
+      summary: null,
+      error: "Unable to retrieve the current weather forecast.",
+    },
+    error: data ? null : "Weather service unreachable",
+  };
 }
 
-export function fetchSatellite(fieldId: string) {
-  return withFallback(
-    () =>
-      tryFetch<{ source: string; series: SatelliteObservation[] }>(
-        `/api/fields/${fieldId}/satellite`
-      ),
-    () => ({ source: "Satellite-derived demo layer", series: SATELLITE_SERIES })
-  );
+export async function fetchSatellite(fieldId: string) {
+  const data = await tryFetch<{
+    source: string;
+    status: string;
+    series: SatelliteObservation[];
+    message?: string;
+  }>(`/api/fields/${fieldId}/satellite`);
+
+  return {
+    data: data ?? {
+      source: "Sentinel-2 MSI",
+      status: "unconfigured",
+      series: [],
+      message: "Satellite imagery integration not configured.",
+    },
+    error: data ? null : "Satellite service unreachable",
+  };
 }
 
-export function fetchSensors(fieldId: string) {
-  return withFallback(
-    () =>
-      tryFetch<{ source: string; sensors: Sensor[] }>(
-        `/api/fields/${fieldId}/sensors`
-      ),
-    () => ({ source: "Simulated Sensor Stream", sensors: SENSORS })
-  );
+export async function fetchSensors(fieldId: string) {
+  const data = await tryFetch<{ source: string; sensors: Sensor[] }>(`/api/fields/${fieldId}/sensors`);
+  return {
+    data: data ?? { source: "IoT Sensor Network", sensors: [] },
+    error: data ? null : "Sensors service unreachable",
+  };
 }

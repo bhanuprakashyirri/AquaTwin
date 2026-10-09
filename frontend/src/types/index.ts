@@ -96,6 +96,7 @@ export interface SatelliteObservation {
 }
 
 export interface IrrigationEvent {
+  id?: string;
   date: string;
   zone: string;
   appliedWaterL: number;
@@ -201,6 +202,7 @@ export interface Recommendation {
   nextEvaluationAt: string;
   factors: RecommendationFactor[];
   recommendedKey: string;
+  status?: string;
 }
 
 export interface WaterFingerprint {
@@ -213,10 +215,10 @@ export interface WaterFingerprint {
 }
 
 export interface SystemStatus {
-  sensorStream: "LIVE" | "DEMO";
-  weather: "UPDATED";
-  satelliteLastSync: string;
-  digitalTwin: "ACTIVE";
+  sensorStream: "LIVE" | "DEMO" | "OFFLINE";
+  weather: "UPDATED" | "UNAVAILABLE" | string;
+  satelliteLastSync: string | null;
+  digitalTwin: "ACTIVE" | "IDLE" | string;
   demoMode: boolean;
 }
 

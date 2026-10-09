@@ -22,7 +22,7 @@ export function Dropdown<T extends string | number>({
   value: T;
   onChange: (v: T) => void;
   options: Array<{ value: T; label: string }>;
-  ariaLabel: string;
+  ariaLabel?: string;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -48,7 +48,7 @@ export function Dropdown<T extends string | number>({
     <div className={cn("relative", className)} ref={ref}>
       <button
         type="button"
-        aria-label={ariaLabel}
+        aria-label={ariaLabel || current?.label || "Select option"}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}

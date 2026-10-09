@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Panel, PanelHeader, DataBadge, DemoPill } from "@/components/ui/panel";
+import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { AnimatedValue } from "@/components/ui/animated-value";
@@ -58,12 +58,9 @@ export default function WaterBudgetPage() {
         subtitle="Allocate limited water where it reduces crop-stress risk the most."
         status={statusQ.data}
         actions={
-          <div className="flex items-center gap-2">
-            <DemoPill />
-            <Button variant="primary" loading={optimizing} onClick={() => runOptimize(available)} className="group">
-              Optimize Water <ArrowRight size={14} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
-            </Button>
-          </div>
+          <Button variant="primary" loading={optimizing} onClick={() => runOptimize(available)} className="group">
+            Optimize Water <ArrowRight size={14} className="transition-transform duration-200 ease-out group-hover:translate-x-1" />
+          </Button>
         }
       />
 
