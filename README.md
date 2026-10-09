@@ -1,170 +1,147 @@
-# AquaTwin — AI Irrigation Optimizer
+# AquaTwin — AI Irrigation Intelligence
 
-**Team Absolute Cinema · SRKR Engineering College · Vishnu College Hackathon**
+> Precision digital twin modeling, what-if irrigation simulation, and water budget optimization platform.
 
-> **Simulate the future of your field before using a single drop.**
-
-AquaTwin is a software-first **field digital twin** for irrigation decisions. Instead of another "smart irrigation dashboard," it builds a virtual copy of the field — root-zone moisture, evapotranspiration, effective rainfall, soil water balance — and tests every irrigation decision against it *before* water is released.
-
-The prototype runs **100% offline with deterministic, seeded demo data**. No API keys, no hardware, no external services required.
+AquaTwin pairs real-time soil moisture telemetry with FAO-56 evapotranspiration physics and mathematical optimization to prevent over-irrigation, protect crops against stress, and maximize water savings.
 
 ---
 
-## Problem
+## Workspace Structure
 
-Farmers irrigate on fixed schedules, habit, or guesswork — without simultaneously weighing soil moisture, crop growth stage, weather forecasts, satellite-derived signals, irrigation history, and limited water availability. The result: over-irrigation, water waste, crop stress, and unnecessary cost.
+The project is structured into a clean monorepo with distinct frontend and backend packages:
 
-## Innovation
-
-| Capability | What it does |
-|---|---|
-| **Field Digital Twin** | FAO-56-inspired water balance: ETc from solar radiation, effective rainfall, percolation, depletion-driven stress model |
-| **What-If Simulation** | Projects 48h soil-moisture trajectories for irrigate-now / wait 3/6/12/24h / partial deficit strategies |
-| **Water Budget Optimizer** | OR-Tools CP-SAT allocates limited water to maximize priority-weighted stress reduction under the total-water constraint |
-| **Weather Uncertainty** | Re-runs the recommended plan under rain-occurs / rain-partial / rain-fails outcomes with explicit verdicts |
-| **Field Water Fingerprint** | Learned field characteristics: retention, drying rate, irrigation/rain response, recovery time |
-| **Explainable AI** | Deterministic explanation layer over structured twin/simulation/optimizer output (optional Gemini adapter) |
-
-## Architecture
-
-```mermaid
-flowchart LR
-    subgraph Frontend [Next.js 14 · TypeScript · Tailwind · shadcn-style UI]
-        UI[Dashboard / Twin / Simulator / Budget / Health / Analytics / History]
-        MAP[MapLibre GL zone maps]
-        CH[Recharts timelines]
-        WS[Sensor stream hook]
-    end
-
-    subgraph Engine [Deterministic Demo Engine · TypeScript]
-        DE[Twin + Simulation + Optimizer mirror]
-    end
-
-    subgraph Backend [FastAPI · Python]
-        API[REST routes]
-        WSS[WebSocket /api/ws/field/id]
-        TWIN[DigitalTwinService]
-        PRED[PredictionService]
-        SIM[SimulationService]
-        OPT[OptimizationService · OR-Tools]
-    end
-
-    subgraph Adapters [Provider adapters]
-        W[DemoWeatherProvider]
-        S[DemoSatelliteProvider]
-        I[DemoSensorProvider]
-        W2[OpenMeteo*]
-        S2[Sentinel-2*]
-        I2[IoT/MQTT*]
-    end
-
-    UI -->|fetch with fallback| API
-    API --> TWIN --> PRED
-    API --> SIM
-    API --> OPT
-    Adapters --> TWIN
-    WSS -->|frames every 3s| WS
-    UI -.->|backend unreachable| DE
+```text
+aquatwin/
+├── frontend/                 # Next.js 14 App Router application
+│   ├── public/              # Agricultural visual assets, hero video & icons
+│   │   ├── images/aquatwin/
+│   │   └── hero.mp4
+│   ├── src/
+│   │   ├── app/             # Application routes (marketing, dashboard, twin, simulator, etc.)
+│   │   ├── components/      # UI components, farm maps, charts, landing layouts
+│   │   ├── hooks/           # Telemetry and sensor data hooks
+│   │   ├── lib/             # Calculations, utilities & deterministic engine
+│   │   ├── services/        # Centralized API client & domain service modules
+│   │   └── types/           # Domain TypeScript definitions
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── next.config.js
+│   ├── tailwind.config.ts
+│   └── README.md
+│
+├── backend/                  # FastAPI calculation and telemetry service
+│   ├── app/
+│   │   ├── api/             # Centralized router & v1 domain endpoints
+│   │   │   ├── router.py
+│   │   │   └── v1/          # Modular endpoints (health, dashboard, twin, etc.)
+│   │   ├── core/            # Configuration, logging & security
+│   │   ├── schemas.py       # Pydantic domain models
+│   │   ├── services/        # FAO-56 twin math, adapters & simulation models
+│   │   └── main.py          # FastAPI application factory
+│   ├── tests/               # Backend integration tests
+│   ├── requirements.txt     # Python dependencies
+│   ├── .env.example
+│   └── README.md
+│
+├── docs/                     # Architecture & API documentation
+│   ├── architecture.md
+│   ├── api-contracts.md
+│   └── development-setup.md
+│
+├── .gitignore
+├── .editorconfig
+├── README.md                 # Primary workspace README
+└── package.json              # Workspace scripts orchestration
 ```
 
-\* production adapters implement the same interface and plug in without route/service changes.
+---
 
-## Technology Stack
+## Prerequisites
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Radix primitives, MapLibre GL, Recharts, Framer Motion, lucide-react
-- **Backend**: FastAPI, Pydantic, NumPy, SciPy, scikit-learn-ready model wrappers, OR-Tools (CP-SAT)
-- **Digital twin math**: FAO-56-style water balance — field capacity/wilting point, TAW, depletion, ET0 from solar radiation, crop coefficient, paddy percolation
-- **Demo data**: seeded (NumPy `default_rng(42)` / mulberry32) — every value reproducible
+- **Node.js**: v18.17+ or v20+
+- **Python**: v3.10+ (v3.11 recommended)
+- **Package Managers**: `npm` and `pip`
 
-## Core Features (pages)
+---
 
-| Route | Purpose |
-|---|---|
-| `/` | Landing: problem, how it works, feature sections |
-| `/dashboard` | Farm Intelligence: KPIs, zone map, AI recommendation, sensor trend, upcoming events |
-| `/twin` | Field Digital Twin: 4-zone map with layer switching (moisture/stress/NDVI-style/priority), zone panel, water-balance state cards |
-| `/simulator` | What-If Simulator: 6 strategies, 48h projection chart, scenario cards, "why this scenario", rain-failure mode |
-| `/water-budget` | Water Budget Optimizer: 500–3000 L slider, animated allocation bars, before/after stress, constraint status |
-| `/field-health` | Geospatial analytics + health index + honest "demo layer" labeling |
-| `/analytics` | 7-day charts, prediction vs actual, Field Water Fingerprint |
-| `/history` | Filterable decision log with reasons + prediction-vs-actual |
-| `/settings` | Demo mode, provider adapters, backend connection, Reset Demo |
+## Installation & Setup
 
-## Digital Twin Model
+### 1. Install dependencies
+```bash
+# Frontend dependencies
+npm --prefix frontend install
 
-- Soil: FC 34%, WP 14%, 300 mm root zone → TAW 60 mm
-- Daily `ET0` from forecast solar radiation; `ETc = ET0 × Kc(1.12)` (reproductive rice)
-- Effective rainfall at 80% infiltration efficiency; paddy seepage/percolation 0.35 mm/h
-- Depletion `Dr` drives a logistic crop-stress proxy (calibrated: 8% at current 24.6% moisture, 46% near wilting)
-- Irrigation converts litres → moisture points with a demo-calibrated factor (720 L ≈ +14 points)
+# Backend dependencies
+python -m pip install -r backend/requirements.txt
+```
 
-Recommendation policy: lowest water use among scenarios with stress ≤ 15% **and** ≥ 23.5% carryover moisture at horizon end.
+### 2. Environment Configuration
+Copy the provided `.env.example` templates:
 
-## Demo Mode
+- Frontend: `cp frontend/.env.example frontend/.env.local`
+- Backend: `cp backend/.env.example backend/.env`
 
-- Global **DEMO MODE** badge and per-panel source labels ("Demo Data", "Simulated Sensor Stream", "Satellite-derived demo layer")
-- The frontend ships an **identical deterministic engine** — if the FastAPI backend is unreachable, every page still works with the same numbers (header shows "Engine: Demo Engine" vs "FastAPI")
-- The sensor stream tries the backend WebSocket first, then falls back to an in-process simulated stream
-- **Reset Demo** in Settings
+*Note: All features function deterministically out-of-the-box without requiring external paid API keys.*
 
-## Local Development
+---
+
+## Running the Application
+
+### Option A: From Repository Root (Recommended)
+Open two terminal windows:
 
 ```bash
-# Frontend
-npm install
-npm run dev          # http://localhost:3000
+# Terminal 1 — Start Backend (FastAPI on port 8000):
+npm run dev:backend
+# (Delegates to: python -m uvicorn app.main:app --app-dir backend --reload --port 8000)
 
-# Backend (optional — frontend falls back to its built-in engine)
-cd backend
-pip install -r requirements.txt
-python -m uvicorn app.main:app --port 8000
-# Interactive docs: http://localhost:8000/docs
+# Terminal 2 — Start Frontend (Next.js on port 3000):
+npm run dev:frontend
+# (Delegates to: npm --prefix frontend run dev)
 ```
 
-Production build: `npm run build && npm start`
+### Option B: From Individual Subdirectories
+```bash
+# Backend:
+cd backend
+python -m uvicorn app.main:app --reload --port 8000
 
-## Environment Variables
+# Frontend:
+cd frontend
+npm run dev
+```
 
-See `.env.example` (frontend) and `backend/.env.example`. **All values optional:**
+---
 
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_API_BASE` | Backend URL; empty → in-browser demo engine |
-| `GEMINI_API_KEY` | Optional explanation-layer LLM (never numeric decisions) |
-| `DATABASE_URL` | Optional persistence (PostgreSQL/TimescaleDB) |
-| `REDIS_URL` | Optional cache |
+## Testing & Quality Assurance
+
+```bash
+# Run backend integration test suite (15 tests covering all API endpoints):
+npm run test:backend
+# Or directly: python -m unittest discover -s backend/tests -p "test_*.py"
+
+# Run frontend typecheck:
+npm run typecheck:frontend
+# Or directly: npm --prefix frontend run typecheck
+
+# Build frontend for production:
+npm run build:frontend
+# Or directly: npm --prefix frontend run build
+```
+
+---
 
 ## API Documentation
 
-| Method | Route | Description |
-|---|---|---|
-| GET | `/api/farms` | Farms with fields |
-| GET | `/api/fields/{id}` | Field + crop |
-| GET | `/api/fields/{id}/state` | Twin water-balance state |
-| GET | `/api/fields/{id}/zones` | Zones + zone states |
-| GET | `/api/fields/{id}/weather` | 48h forecast + 7d observations |
-| GET | `/api/fields/{id}/satellite` | NDVI/NDWI-style series |
-| GET | `/api/fields/{id}/sensors` | Sensor snapshot |
-| GET | `/api/fields/{id}/history` | Irrigation events |
-| POST | `/api/simulation/run` | Full what-if scenario set |
-| POST | `/api/simulation/rain-uncertainty` | Rain outcome stress analysis |
-| POST | `/api/water-budget/optimize` | OR-Tools allocation |
-| GET | `/api/recommendation` | Explainable recommendation |
-| GET | `/api/analytics/water-fingerprint` | Learned field characteristics |
-| GET | `/api/system/status` | System status indicator |
-| WS | `/api/ws/field/{id}` | Sensor frames every 3s |
+When the backend is running, interactive API documentation is available at:
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Health Check**: [http://localhost:8000/api/health](http://localhost:8000/api/health)
 
-## Future Hardware Integration
+---
 
-All data flows through three adapter interfaces (`WeatherProvider`, `SatelliteProvider`, `SensorProvider` — `backend/app/services/adapters.py`, mirrored on the frontend). To connect real infrastructure:
+## Offline Demo Mode
 
-1. **Sensors**: implement `IoTSensorProvider` (MQTT/LoRaWAN bridge) returning the same `Sensor` shape
-2. **Weather**: implement `OpenMeteoWeatherProvider` (keyless) or a commercial API
-3. **Satellite**: implement `SentinelSatelliteProvider` (Copernicus Data Space) — the UI already labels layers as satellite-derived
-4. **Persistence**: set `DATABASE_URL`; the schema (Farms, Fields, Zones, Sensors, WeatherObservations, IrrigationEvents, Simulations, Predictions, Optimizations) maps 1:1 to the Pydantic models
-
-## Honesty Guarantees
-
-- No fake accuracy metrics — confidence values are labeled model confidence
-- No real-time or real-measurement claims — every demo surface is labeled
-- The assistant explains decisions; it never generates them
+AquaTwin features dual-mode architecture:
+- When connected to the FastAPI service, all calculations are executed using live FAO-56 evapotranspiration models and OR-Tools solvers.
+- If the backend is offline or during high-stakes presentations, the frontend's centralized API client automatically falls back to an in-browser deterministic simulation engine, ensuring no screens fail or display broken states.
