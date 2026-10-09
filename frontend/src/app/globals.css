@@ -60,17 +60,10 @@ body {
   overflow-x: hidden;
 }
 
-/* Scrollbars are hidden site-wide — a top progress bar shows position instead (QuizCore standard) */
+/* Sleek subtle scrollbars */
 html,
-body,
-* {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-}
-*::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+body {
+  scrollbar-gutter: stable;
 }
 
 html {
@@ -221,6 +214,24 @@ body {
   animation: aqua-pulse-ring 2s ease-in-out infinite;
 }
 
+@keyframes aqua-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-page-enter {
+  animation: aqua-page-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+}
+
 .skeleton {
   position: relative;
   overflow: hidden;
@@ -302,4 +313,31 @@ label,
 }
 .paper-border {
   border: 1px solid rgba(22, 58, 49, 0.06);
+}
+
+/* ============================================================
+   Enhanced panel glass effect — premium feel on hover
+   ============================================================ */
+.panel-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+}
+
+/* ============================================================
+   Gradient text utility — brand-colored text fill
+   ============================================================ */
+.text-gradient-brand {
+  background: linear-gradient(135deg, #28745F 0%, #1C5143 50%, #34A87A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   Subtle dot pattern for empty states
+   ============================================================ */
+.dot-pattern {
+  background-image: radial-gradient(circle, #D5E4DF 1px, transparent 1px);
+  background-size: 20px 20px;
 }

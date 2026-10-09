@@ -137,22 +137,33 @@ export function FarmMap({
     [sensors],
   );
 
-  // init map — basemap from the Sih-HailStrom reference set, fit to field once zones arrive
+  // init map — basemap from the Sih-HailStrom reference set, deferred so
+  // route transitions don't stutter
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: BASEMAPS[initialBasemapRef.current],
-      center: MAP_CENTER,
-      zoom: 15,
-      attributionControl: {},
-    });
-    mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-    map.on("load", () => setReady(true));
+    let cancelled = false;
+
+    const timer = setTimeout(() => {
+      if (cancelled || !containerRef.current || mapRef.current) return;
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style: BASEMAPS[initialBasemapRef.current],
+        center: MAP_CENTER,
+        zoom: 15,
+        attributionControl: {},
+      });
+      mapRef.current = map;
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+      map.on("load", () => setReady(true));
+    }, 40);
+
     return () => {
-      map.remove();
-      mapRef.current = null;
+      cancelled = true;
+      clearTimeout(timer);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
   }, []);
 

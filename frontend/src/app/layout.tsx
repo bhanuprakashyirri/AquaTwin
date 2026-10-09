@@ -3,7 +3,6 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { VoiceAgent } from "@/components/agent/VoiceAgent";
 import { ToastProvider } from "@/components/ui/toast";
-import { ScrollProgress } from "@/components/scroll-progress";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
 /**
@@ -52,7 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ToastProvider>
           <LoadingScreen />
-          <ScrollProgress />
           {children}
           <VoiceAgent />
         </ToastProvider>

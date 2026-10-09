@@ -22,6 +22,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
@@ -250,22 +251,24 @@ export default function SimulatorPage() {
         {/* Right: results */}
         <div className="space-y-4">
           {!result && !running ? (
-            <Panel className="flex min-h-[420px] items-center justify-center">
+            <Panel className="flex min-h-[420px] items-center justify-center overflow-hidden relative">
+              {/* Dot pattern background */}
+              <div className="absolute inset-0 dot-pattern opacity-40" />
               <motion.div
-                className="max-w-sm p-8 text-center"
+                className="relative max-w-sm p-8 text-center"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: DURATION.emphasis, ease: EASE }}
               >
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl2 bg-brand-light">
-                  <Sprout size={26} className="text-brand" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-light to-[#D5E9DF] shadow-[0_4px_16px_rgba(40,116,95,0.12)]">
+                  <Sprout size={28} className="text-brand" />
                 </div>
-                <h3 className="mt-4 text-[15px] font-semibold text-ink">Compare decisions before using water</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+                <h3 className="mt-5 text-[17px] font-bold tracking-tight text-ink">Compare decisions before using water</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                   The simulator projects soil moisture for the next 48 hours under each irrigation choice — using
                   rainfall forecast, crop demand and soil retention — so you can see outcomes before committing water.
                 </p>
-                <Button variant="primary" className="mt-5" onClick={run}>
+                <Button variant="primary" className="mt-6" onClick={run}>
                   <Play size={14} /> Run simulation
                 </Button>
               </motion.div>
@@ -288,15 +291,23 @@ export default function SimulatorPage() {
                       {PROGRESS_STEPS[progressStep]}
                     </motion.div>
                   </AnimatePresence>
-                  <span className="text-micro text-ink-faint">{progressStep + 1} / {PROGRESS_STEPS.length}</span>
+                  <span className="text-micro font-medium text-brand">Step {progressStep + 1} of {PROGRESS_STEPS.length}</span>
                 </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#E3ECE6]">
-                  <motion.div
-                    className="h-full rounded-full bg-brand"
-                    initial={{ width: "5%" }}
-                    animate={{ width: `${((progressStep + 1) / PROGRESS_STEPS.length) * 100}%` }}
-                    transition={{ duration: 0.45, ease: EASE }}
-                  />
+                {/* 4-step node indicators — NO PROGRESS BAR */}
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  {PROGRESS_STEPS.map((step, idx) => (
+                    <div
+                      key={step}
+                      className={cn(
+                        "h-1.5 flex-1 rounded-full transition-all duration-300",
+                        idx < progressStep
+                          ? "bg-brand"
+                          : idx === progressStep
+                          ? "bg-brand animate-pulse shadow-[0_0_8px_rgba(40,116,95,0.4)]"
+                          : "bg-[#E3ECE6]"
+                      )}
+                    />
+                  ))}
                 </div>
                 <div className="mt-6 space-y-2.5">
                   {[0, 1, 2].map((i) => (

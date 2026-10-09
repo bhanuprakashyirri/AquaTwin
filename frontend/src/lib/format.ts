@@ -1,9 +1,11 @@
-export function fmtL(v: number, digits = 0): string {
-  return `${v.toLocaleString("en-US", { maximumFractionDigits: digits })} L`;
+export function fmtL(v: number | null | undefined, digits = 0): string {
+  if (v === null || v === undefined || isNaN(Number(v))) return "0 L";
+  return `${Number(v).toLocaleString("en-US", { maximumFractionDigits: digits })} L`;
 }
 
-export function fmtPct(v: number, digits = 1): string {
-  return `${v.toFixed(digits)}%`;
+export function fmtPct(v: number | null | undefined, digits = 1): string {
+  if (v === null || v === undefined || isNaN(Number(v))) return "0%";
+  return `${Number(v).toFixed(digits)}%`;
 }
 
 export function fmtTime(iso: string): string {

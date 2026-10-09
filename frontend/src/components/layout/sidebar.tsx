@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -38,20 +39,48 @@ const NAV_OPERATIONS = [
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // Clear pending optimistic state when route officially lands
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  // Aggressively prefetch all internal routes immediately in background
+  useEffect(() => {
+    [...NAV_INTELLIGENCE, ...NAV_OPERATIONS].forEach((item) => {
+      router.prefetch(item.href);
+    });
+  }, [router]);
 
   const renderNavGroup = (items: typeof NAV_INTELLIGENCE) => (
     <div className="space-y-0.5">
       {items.map((item) => {
-        const active = pathname === item.href;
+        const isCurrent = pathname === item.href;
+        const isPending = pendingHref === item.href;
+        const active = isPending || (pendingHref === null && isCurrent);
         const Icon = item.icon;
         return (
           <Link
             key={item.href}
             href={item.href}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
+            prefetch={true}
+            onPointerDown={() => {
+              // 0ms instant tactile trigger before click fires
+              if (pathname !== item.href) {
+                setPendingHref(item.href);
+              }
+            }}
+            onClick={() => {
+              if (pathname !== item.href) {
+                setPendingHref(item.href);
+              }
+              onNavigate?.();
+            }}
+            aria-current={isCurrent ? "page" : undefined}
             className={cn(
-              "group relative flex h-11 items-center gap-3 rounded-full px-4 text-[13px] font-medium tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+              "group relative flex h-11 items-center gap-3 rounded-full px-4 text-[13px] font-medium tracking-tight transition-colors duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
               active
                 ? "bg-gradient-to-r from-brand-light via-[#E4F1EA] to-brand-light/40 text-brand-dark font-semibold border border-[#BFDCCB] shadow-[0_2px_8px_rgba(40,116,95,0.12)]"
                 : "text-[#4A6058] hover:bg-[#F0F4F2] hover:text-ink"
@@ -64,7 +93,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
             <span
               className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-200",
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors duration-75",
                 active
                   ? "bg-brand text-white shadow-sm"
                   : "bg-[#EBF0ED] text-[#5A7066] group-hover:bg-brand-light group-hover:text-brand"
@@ -76,11 +105,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="flex-1 leading-tight">{item.label}</span>
 
             {active && (
-              <motion.span
-                layoutId="sidebar-active-dot"
-                className="h-1.5 w-1.5 rounded-full bg-brand"
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
-              />
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             )}
           </Link>
         );

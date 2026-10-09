@@ -43,6 +43,7 @@ export function MobileNav({ onMore }: { onMore: () => void }) {
             <Link
               key={t.href}
               href={t.href}
+              prefetch={true}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors duration-150",
