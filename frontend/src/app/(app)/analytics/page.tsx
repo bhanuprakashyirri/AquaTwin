@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Activity, CloudRain, Droplets, Sparkles, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { KpiCard } from "@/components/ui/kpi";
@@ -118,10 +119,36 @@ export default function AnalyticsPage() {
       />
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <KpiCard index={0} label="Water applied (7 days)" value={totalApplied7d ? `${(totalApplied7d / 1000).toFixed(1)}k L` : "0 L"} sub="Logged applications" />
-        <KpiCard index={1} label="Est. water saved" value={savedTotal ? `${(savedTotal / 1000).toFixed(1)}k L` : "0 L"} sub="Vs unoptimized baseline" trend={{ direction: "up", text: "cumulative", good: true }} />
-        <KpiCard index={2} label="Avg moisture response" value={meanResponse ? `+${meanResponse.toFixed(1)}%` : "—"} sub="Per irrigation event" />
-        <KpiCard index={3} label="Rainfall (7 days)" value={daily.length ? `${daily.reduce((s, d) => s + d.rain, 0).toFixed(0)} mm` : "—"} sub="Open-Meteo observations" />
+        <KpiCard
+          index={0}
+          label="Water applied (7 days)"
+          value={totalApplied7d ? `${(totalApplied7d / 1000).toFixed(1)}k L` : "0 L"}
+          sub="Logged applications"
+          info={<>Total irrigation water physically applied through automated or scheduled valves in the last 7 days.</>}
+        />
+        <KpiCard
+          index={1}
+          label="Est. water saved"
+          value={savedTotal ? `${(savedTotal / 1000).toFixed(1)}k L` : "0 L"}
+          sub="Vs unoptimized baseline"
+          accent
+          trend={{ direction: "up", text: "cumulative", good: true }}
+          info={<>Net water preserved by waiting for forecast rain windows and deficit rationing.</>}
+        />
+        <KpiCard
+          index={2}
+          label="Avg moisture response"
+          value={meanResponse ? `+${meanResponse.toFixed(1)}%` : "—"}
+          sub="Per irrigation event"
+          info={<>Observed volumetric soil moisture delta within 3 hours post-irrigation.</>}
+        />
+        <KpiCard
+          index={3}
+          label="Rainfall (7 days)"
+          value={daily.length ? `${daily.reduce((s, d) => s + d.rain, 0).toFixed(0)} mm` : "—"}
+          sub="Open-Meteo observations"
+          info={<>Observed cumulative rainfall from local meteorological radar.</>}
+        />
       </div>
 
       <div className="mt-6 space-y-6">

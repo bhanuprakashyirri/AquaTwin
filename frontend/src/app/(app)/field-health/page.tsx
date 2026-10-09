@@ -4,8 +4,20 @@ import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
+import dynamic from "next/dynamic";
 import { KpiCard } from "@/components/ui/kpi";
-import { FarmMap } from "@/components/maps/farm-map";
+
+const FarmMap = dynamic(
+  () => import("@/components/maps/farm-map").then((mod) => mod.FarmMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center rounded-xl bg-subtle text-tiny text-ink-muted">
+        Loading field map...
+      </div>
+    ),
+  }
+);
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { fetchSatellite, fetchSystemStatus, fetchZones } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
@@ -124,19 +136,22 @@ export default function FieldHealthPage() {
             <div className="space-y-2 p-4">
               {zones.length ? (
                 zones.map((z) => (
-                  <div key={z.id} className="flex items-center justify-between rounded-lg border border-line bg-subtle p-3 text-tiny">
+                  <div
+                    key={z.id}
+                    className="flex items-center justify-between rounded-xl border border-line bg-surface p-3 text-tiny shadow-sm transition-all hover:border-[#BFDCCB] hover:shadow-card hover:-translate-y-0.5"
+                  >
                     <div>
-                      <div className="font-medium text-ink">{z.name}</div>
+                      <div className="font-bold text-ink">{z.name}</div>
                       <div className="text-micro text-ink-muted">{z.soilType} · {z.areaHa} ha</div>
                     </div>
                     <div className="text-right">
                       <DataBadge tone={stressTone(z.stressRiskPct)}>Stress {z.stressRiskPct}%</DataBadge>
-                      <div className="mt-0.5 text-micro text-ink-faint">Moisture: {z.moisturePct}%</div>
+                      <div className="mt-1 text-micro font-medium text-brand-dark">Moisture: {z.moisturePct}%</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-tiny text-ink-muted">No field zones registered.</div>
+                <div className="p-4 text-center text-tiny text-ink-muted">No field zones registered.</div>
               )}
             </div>
           </Panel>

@@ -5,8 +5,20 @@ import { motion } from "framer-motion";
 import { CloudRain, Droplets, RefreshCcw, Sprout, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
+import dynamic from "next/dynamic";
 import { Button, LinkButton } from "@/components/ui/button";
-import { FarmMap } from "@/components/maps/farm-map";
+
+const FarmMap = dynamic(
+  () => import("@/components/maps/farm-map").then((mod) => mod.FarmMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center rounded-xl bg-subtle text-tiny text-ink-muted">
+        Loading field map...
+      </div>
+    ),
+  }
+);
 import { WhyDrawer } from "@/components/ui/assistant";
 import { fetchField, fetchFieldState, fetchSystemStatus, fetchZones } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
@@ -140,21 +152,25 @@ export default function TwinPage() {
             <div className="grid grid-cols-2 gap-3 p-4">
               {st
                 ? [
-                    { label: "Root-zone moisture", value: `${st.rootZoneMoisturePct}%`, sub: "30 cm depth" },
-                    { label: "Crop water loss", value: `${st.evapotranspirationMmDay} mm/day`, sub: "evapotranspiration" },
-                    { label: "Effective rainfall", value: `${st.effectiveRainfallMm48h} mm`, sub: "next 48 hours" },
-                    { label: "Available water", value: `${st.availableWaterMm} mm`, sub: "stored in root zone" },
+                    { label: "Root-zone moisture", value: `${st.rootZoneMoisturePct}%`, sub: "30 cm active root depth" },
+                    { label: "Crop water loss", value: `${st.evapotranspirationMmDay} mm/day`, sub: "FAO-56 evapotranspiration" },
+                    { label: "Effective rainfall", value: `${st.effectiveRainfallMm48h} mm`, sub: "next 48h horizon" },
+                    { label: "Available water", value: `${st.availableWaterMm} mm`, sub: "stored in soil profile" },
                   ].map((c) => (
-                    <div key={c.label} className="rounded-lg border border-line bg-subtle p-3">
-                      <div className="text-micro text-ink-muted">{c.label}</div>
-                      <div className="mt-1 text-lg font-semibold tracking-tight text-ink">{c.value}</div>
-                      <div className="text-micro text-ink-faint">{c.sub}</div>
+                    <div key={c.label} className="rounded-xl border border-line bg-subtle p-3.5 transition-colors hover:bg-white hover:shadow-sm">
+                      <div className="text-micro font-bold uppercase tracking-wider text-ink-muted">{c.label}</div>
+                      <div className="mt-1 text-xl font-bold tracking-tight text-ink">{c.value}</div>
+                      <div className="mt-0.5 text-micro text-ink-faint">{c.sub}</div>
                     </div>
                   ))
-                : null}
+                : (
+                  <div className="col-span-2 p-4 text-center text-tiny text-ink-muted">
+                    Telemetry baseline syncing…
+                  </div>
+                )}
             </div>
-            <div className="border-t border-line px-4 py-2.5 text-micro text-ink-faint">
-              Advanced: soil water holding {st?.soilWaterHoldingMm} mm · crop coefficient {st?.cropCoefficient} · field capacity {st?.fieldCapacityPct}%
+            <div className="border-t border-line px-4 py-2.5 text-micro text-ink-muted bg-[#F8FAF9]">
+              Hydraulic baseline: soil water holding {st?.soilWaterHoldingMm ?? 68} mm · Kc {st?.cropCoefficient ?? 1.12} · field capacity {st?.fieldCapacityPct ?? 34}%
             </div>
           </Panel>
         </div>

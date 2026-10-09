@@ -8,7 +8,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://localhost:8000";
 
-export const TIMEOUT_MS = 6000;
+export const TIMEOUT_MS = 2500;
 
 export interface ApiResponse<T> {
   data: T | null;

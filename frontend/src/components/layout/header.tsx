@@ -22,7 +22,9 @@ export function Header() {
   const farmName = farmsQ.data?.farms[0]?.name ?? "AquaTwin Farm";
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 md:px-6">
+    <header className="relative flex h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 md:px-6">
+      {/* Subtle gradient accent line at bottom */}
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/15 to-transparent" />
       <div className="flex min-w-0 items-center gap-3">
         {/* Mobile menu */}
         <button

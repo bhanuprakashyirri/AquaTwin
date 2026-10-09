@@ -15,8 +15,20 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { Button, LinkButton } from "@/components/ui/button";
+import dynamic from "next/dynamic";
 import { KpiCard, MiniIndicator } from "@/components/ui/kpi";
-import { FarmMap } from "@/components/maps/farm-map";
+
+const FarmMap = dynamic(
+  () => import("@/components/maps/farm-map").then((mod) => mod.FarmMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center rounded-xl bg-subtle text-tiny text-ink-muted">
+        Loading field map...
+      </div>
+    ),
+  }
+);
 import { SensorTrendChart } from "@/components/charts/sensor-trend";
 import { WhyDrawer } from "@/components/ui/assistant";
 import {
@@ -48,10 +60,18 @@ export default function DashboardPage() {
   const liveMoisture = useMemo(() => {
     const soil = stream.sensors.filter((s) => s.kind === "soil_moisture");
     if (!soil.length) return null;
-    return Math.round((soil.reduce((a, s) => a + s.lastValue, 0) / soil.length) * 10) / 10;
+    const values = soil
+      .map((s) => s.lastValue ?? (s as any).last_value)
+      .filter((v): v is number => typeof v === "number" && !isNaN(v));
+    if (!values.length) return null;
+    return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
   }, [stream.sensors]);
 
-  const moisture = liveMoisture ?? stateQ.data?.rootZoneMoisturePct ?? null;
+  const moisture =
+    liveMoisture ??
+    stateQ.data?.rootZoneMoisturePct ??
+    (stateQ.data as any)?.root_zone_moisture_pct ??
+    null;
   const rainPct = wxQ.data?.summary?.nextRainProbabilityPct ?? null;
   const rainH = wxQ.data?.summary?.nextRainInHours ?? null;
   const rec = recQ.data;
@@ -181,27 +201,32 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: 0.1 }}
-                className="rounded-xl2 border border-[#BFDCCB] bg-brand-light p-4"
+                className="relative overflow-hidden rounded-xl2 border border-[#BFDCCB] bg-gradient-to-br from-brand-light via-[#E4F1EA] to-brand-light/60 p-5"
               >
-                <div className="text-micro font-medium uppercase tracking-wide text-ink-muted">Recommended action</div>
-                <div className="mt-1 text-[24px] font-semibold leading-tight tracking-tight text-brand-dark">
-                  {rec?.action ?? "PENDING TELEMETRY"}
+                {/* Decorative glow */}
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-brand/8 blur-3xl pointer-events-none" />
+
+                <div className="relative">
+                  <div className="text-micro font-bold uppercase tracking-widest text-brand/70">Recommended action</div>
+                  <div className="mt-2 text-[26px] font-bold leading-tight tracking-tight text-brand-dark">
+                    {rec?.action ?? "PENDING TELEMETRY"}
+                  </div>
+                  <p className="mt-2.5 text-sm leading-relaxed text-[#2A5446]">
+                    {rec?.reason ??
+                      "Awaiting active soil moisture readings and field digital twin baseline to compute recommendations."}
+                  </p>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-[#2A5446]">
-                  {rec?.reason ??
-                    "Awaiting active soil moisture readings and field digital twin baseline to compute recommendations."}
-                </p>
               </motion.div>
 
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {[
-                  ["Water saved", rec?.waterSavedL ? fmtL(rec.waterSavedL) : "—"],
-                  ["Stress risk", stress !== null ? `${stress}%` : "—"],
-                  ["Next review", rec?.nextEvaluationAt ?? "Pending telemetry"],
-                ].map(([k, v]) => (
-                  <div key={k} className="rounded-lg border border-line bg-subtle px-3 py-2.5">
-                    <div className="text-micro text-ink-muted">{k}</div>
-                    <div className="mt-0.5 text-sm font-semibold text-ink">{v}</div>
+                  ["Water saved", rec?.waterSavedL ? `+${fmtL(rec.waterSavedL)}` : "—", "text-emerald-800 bg-emerald-50/90 border-emerald-200/80"],
+                  ["Stress risk", stress !== null ? `${stress}%` : "—", "text-ink bg-subtle border-line"],
+                  ["Next review", rec?.nextEvaluationAt ?? "Pending telemetry", "text-ink bg-subtle border-line"],
+                ].map(([k, v, cls]) => (
+                  <div key={k} className={`rounded-xl border p-3 ${cls}`}>
+                    <div className="text-micro font-bold uppercase tracking-wider text-ink-muted">{k}</div>
+                    <div className="mt-1 text-sm font-bold">{v}</div>
                   </div>
                 ))}
               </div>

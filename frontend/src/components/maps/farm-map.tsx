@@ -98,27 +98,37 @@ export function FarmMap({
     [sensors],
   );
 
-  // init map — light GIS base, fit to field once zones arrive
+  // init map — light GIS base, deferred so route transitions don't stutter
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {},
-        layers: [{ id: "bg", type: "background", paint: { "background-color": "#EDF2EC" } }],
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-      },
-      center: [81.5212, 16.5449],
-      zoom: 15,
-      attributionControl: false,
-    });
-    mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.on("load", () => setReady(true));
+    let cancelled = false;
+
+    const timer = setTimeout(() => {
+      if (cancelled || !containerRef.current || mapRef.current) return;
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style: {
+          version: 8,
+          sources: {},
+          layers: [{ id: "bg", type: "background", paint: { "background-color": "#EDF2EC" } }],
+          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+        },
+        center: [81.5212, 16.5449],
+        zoom: 15,
+        attributionControl: false,
+      });
+      mapRef.current = map;
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      map.on("load", () => setReady(true));
+    }, 40);
+
     return () => {
-      map.remove();
-      mapRef.current = null;
+      cancelled = true;
+      clearTimeout(timer);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
   }, []);
 

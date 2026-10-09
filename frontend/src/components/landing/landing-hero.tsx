@@ -75,7 +75,7 @@ export function LandingHero() {
         {/* Hero video — full brightness, let overlays handle dimming */}
         <video
           ref={videoRef}
-          src="/hero.mp4"
+          src="/herovid.mp4"
           autoPlay
           muted
           loop

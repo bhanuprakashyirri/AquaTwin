@@ -102,23 +102,34 @@ export function LoadingScreen() {
               </div>
             </div>
 
-            {/* High-tech telemetry progress bar */}
-            <div className="mt-8 flex flex-col items-center w-72 max-w-[85vw]">
-              {/* Progress bar container */}
-              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10 border border-white/5">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.6)] transition-[width] duration-75 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-
-              {/* Progress meta row */}
-              <div className="mt-3 flex w-full items-center justify-between text-[11px] text-white/50">
-                <span className="truncate pr-2 font-mono text-[10px] text-emerald-300/80">
+            {/* Ambient telemetry status — NO PROGRESS BAR */}
+            <div className="mt-8 flex flex-col items-center">
+              {/* Dynamic status pill with pulsing radar dot */}
+              <div className="flex items-center gap-2.5 rounded-full border border-emerald-500/25 bg-emerald-950/60 px-4 py-1.5 shadow-[0_2px_16px_rgba(16,185,129,0.15)] backdrop-blur-md">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span className="font-mono text-[11px] font-medium tracking-tight text-emerald-200">
                   {stageText}
                 </span>
-                <span className="font-mono font-bold text-white/80 shrink-0">
-                  {progress}%
+              </div>
+
+              {/* Sub-telemetry indicators: 3 pulsing sensor nodes */}
+              <div className="mt-4 flex items-center gap-4 text-[10px] text-emerald-400/50">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1 w-1 rounded-full bg-emerald-400" />
+                  Soil Hydrology
+                </span>
+                <span className="text-white/20">/</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1 w-1 rounded-full bg-teal-400" />
+                  Weather Radar
+                </span>
+                <span className="text-white/20">/</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1 w-1 rounded-full bg-emerald-300" />
+                  Digital Twin
                 </span>
               </div>
             </div>

@@ -337,7 +337,12 @@ def optimize_water(zones: List[dict], available: float) -> dict:
 
     solver_name = "OR-Tools CP-SAT"
     cleaned_zones = [
-        {**z, "needL": float(z.get("needL", z.get("waterRequirementL", 0)))}
+        {
+            **z,
+            "needL": float(z.get("needL", z.get("waterRequirementL", z.get("water_requirement_l", 0)))),
+            "moisturePct": float(z.get("moisturePct", z.get("moisture_pct", 20.0))),
+            "stressRiskPct": float(z.get("stressRiskPct", z.get("stress_risk_pct", 0.0))),
+        }
         for z in zones
     ]
     alloc: Dict[str, float] = {}

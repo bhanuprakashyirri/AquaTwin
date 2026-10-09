@@ -39,9 +39,9 @@ export default function HistoryPage() {
         .slice(0, 10)
         .reverse()
         .map((e) => ({
-          label: `${new Date(e.date).getDate()}/${new Date(e.date).getMonth() + 1} ${e.zone.split(" ")[1] || ""}`,
-          predicted: e.predictedRequirementL,
-          applied: e.appliedWaterL,
+          label: `${new Date(e.date).getDate()}/${new Date(e.date).getMonth() + 1} ${(e.zone || "").split(" ")[1] || ""}`,
+          predicted: e.predictedRequirementL ?? (e as any).predicted_requirement_l ?? 0,
+          applied: e.appliedWaterL ?? (e as any).applied_water_l ?? 0,
         })),
     [sorted],
   );
@@ -57,6 +57,13 @@ export default function HistoryPage() {
     { value: 28, label: "All rows" },
   ];
 
+  const totalApplied = useMemo(() => events.reduce((s, e) => s + (e.appliedWaterL ?? (e as any).applied_water_l ?? 0), 0), [events]);
+  const totalDeferred = useMemo(() => events.filter(e => e.decision === "Waited").reduce((s, e) => s + (e.predictedRequirementL ?? (e as any).predicted_requirement_l ?? 0), 0), [events]);
+  const avgResponse = useMemo(() => {
+    const irrigated = events.filter(e => (e.appliedWaterL ?? (e as any).applied_water_l ?? 0) > 0);
+    return irrigated.length ? (irrigated.reduce((s, e) => s + (e.moistureResponsePct ?? (e as any).moisture_response_pct ?? 0), 0) / irrigated.length).toFixed(1) : "0";
+  }, [events]);
+
   return (
     <div className="mx-auto max-w-[1440px]">
       <PageHeader
@@ -64,6 +71,25 @@ export default function HistoryPage() {
         subtitle="Chronological log of past irrigation actions, predicted requirements and soil moisture response."
         status={statusQ.data}
       />
+
+      {/* Summary KPI row */}
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl2 border border-line bg-surface p-4 shadow-card">
+          <div className="text-micro font-bold uppercase tracking-wider text-ink-muted">Total Applied Water</div>
+          <div className="mt-1 text-2xl font-bold text-brand-dark">{fmtL(totalApplied)}</div>
+          <div className="mt-1 text-micro text-ink-faint">Executed through {events.filter(e => e.appliedWaterL > 0).length} irrigation cycles</div>
+        </div>
+        <div className="rounded-xl2 border border-[#BFDCCB] bg-brand-light/60 p-4 shadow-card">
+          <div className="text-micro font-bold uppercase tracking-wider text-brand-dark/80">Water Deferred / Saved</div>
+          <div className="mt-1 text-2xl font-bold text-emerald-800">+{fmtL(totalDeferred)}</div>
+          <div className="mt-1 text-micro text-brand-dark/70">Waited for forecasted rain events</div>
+        </div>
+        <div className="rounded-xl2 border border-line bg-surface p-4 shadow-card">
+          <div className="text-micro font-bold uppercase tracking-wider text-ink-muted">Avg Moisture Gain</div>
+          <div className="mt-1 text-2xl font-bold text-ink">+{avgResponse}%</div>
+          <div className="mt-1 text-micro text-ink-faint">Volumetric root-zone moisture lift</div>
+        </div>
+      </div>
 
       <Panel>
         <PanelHeader title="Recent applications" subtitle="Predicted requirement vs actual applied water" />
@@ -93,7 +119,7 @@ export default function HistoryPage() {
       <Panel className="mt-4">
         <PanelHeader
           title="All events"
-          subtitle={`${events.length} total events`}
+          subtitle={`${events.length} total events recorded`}
           right={
             <div className="flex flex-wrap items-center gap-2">
               <Dropdown value={zoneFilter} onChange={setZoneFilter} options={zoneOptions} />
@@ -105,7 +131,7 @@ export default function HistoryPage() {
         <div className="overflow-x-auto">
           {sorted.length ? (
             <table className="w-full text-left text-tiny">
-              <thead className="border-b border-line bg-subtle text-micro font-medium text-ink-muted">
+              <thead className="border-b border-line bg-subtle text-micro font-bold uppercase tracking-wider text-ink-muted">
                 <tr>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Zone</th>
@@ -118,13 +144,17 @@ export default function HistoryPage() {
               </thead>
               <tbody className="divide-y divide-line">
                 {sorted.map((e) => (
-                  <tr key={e.id || `${e.date}-${e.zone}`} className="hover:bg-subtle/50">
-                    <td className="px-4 py-3 font-medium text-ink">{fmtDate(e.date)}</td>
-                    <td className="px-4 py-3 text-ink-soft">{e.zone}</td>
-                    <td className="px-4 py-3 text-right font-medium text-ink">{fmtL(e.appliedWaterL)}</td>
-                    <td className="px-4 py-3 text-right text-ink-muted">{fmtL(e.predictedRequirementL)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-success">
-                      {e.moistureResponsePct > 0 ? `+${e.moistureResponsePct.toFixed(1)}%` : "0%"}
+                  <tr key={e.id || `${e.date}-${e.zone}`} className="transition-colors hover:bg-subtle/70">
+                    <td className="px-4 py-3 font-semibold text-ink">{fmtDate(e.date)}</td>
+                    <td className="px-4 py-3 text-ink-soft">
+                      <span className="rounded bg-[#EAF2ED] px-2 py-0.5 text-micro font-medium text-brand-dark">
+                        {e.zone}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-brand-dark">{fmtL(e.appliedWaterL ?? (e as any).applied_water_l)}</td>
+                    <td className="px-4 py-3 text-right text-ink-muted">{fmtL(e.predictedRequirementL ?? (e as any).predicted_requirement_l)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-success">
+                      {(e.moistureResponsePct ?? (e as any).moisture_response_pct ?? 0) > 0 ? `+${(e.moistureResponsePct ?? (e as any).moisture_response_pct).toFixed(1)}%` : "0%"}
                     </td>
                     <td className="px-4 py-3">{decisionBadge(e.decision)}</td>
                     <td className="max-w-md truncate px-4 py-3 text-ink-muted" title={e.reason}>
@@ -136,7 +166,7 @@ export default function HistoryPage() {
             </table>
           ) : (
             <div className="p-8 text-center text-tiny text-ink-muted">
-              No irrigation records are available yet.
+              No irrigation records match the selected filters.
             </div>
           )}
         </div>
