@@ -46,8 +46,14 @@ aquatwin/
 ├── docs/                     # Architecture & API documentation
 │   ├── architecture.md
 │   ├── api-contracts.md
-│   └── development-setup.md
+│   ├── development-setup.md
+│   └── missed-rain-safety.md  # Missed-Rain / electricity-slot decision policy
 │
+├── dataset/                  # Rainfall-forecast risk calibration datasets
+│   ├── train.csv / val.csv / test.csv   # 43k field-days (synthetic water-balance sim)
+│   ├── field_day_irrigation_dataset.csv # 40k field-days, 104 cols (forecast reliability)
+│   ├── fields.csv, generate_data.py, aquatwin_twin.py
+│   └── dataset_meta.json     # Provenance & column guide
 ├── .gitignore
 ├── .editorconfig
 ├── README.md                 # Primary workspace README
@@ -116,7 +122,7 @@ npm run dev
 ## Testing & Quality Assurance
 
 ```bash
-# Run backend integration test suite (15 tests covering all API endpoints):
+# Run backend integration test suite (31 tests — API + missed-rain safety scenarios):
 npm run test:backend
 # Or directly: python -m unittest discover -s backend/tests -p "test_*.py"
 
