@@ -145,7 +145,7 @@ export function FarmMap({
       style: BASEMAPS[initialBasemapRef.current],
       center: MAP_CENTER,
       zoom: 15,
-      attributionControl: true,
+      attributionControl: {},
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
