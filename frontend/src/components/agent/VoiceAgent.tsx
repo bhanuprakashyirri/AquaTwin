@@ -206,13 +206,11 @@ export function VoiceAgent() {
   return (
     <>
       {/* Floating launcher */}
-      <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", damping: 18, stiffness: 260, delay: 0.4 }}
+      <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Open Aqua voice agent"
-        className="fixed bottom-5 right-5 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-brand-dark to-brand text-white shadow-float transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        className="fixed bottom-5 right-5 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#1D493D] to-[#2F6B58] text-white shadow-float transition-transform duration-200 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
       >
         {voiceState === "listening" && (
           <span className="absolute inset-0 animate-ping rounded-full bg-brand/40" />
@@ -228,7 +226,7 @@ export function VoiceAgent() {
             <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-success" />
           </span>
         )}
-      </motion.button>
+      </button>
 
       {/* Chat panel */}
       <AnimatePresence>

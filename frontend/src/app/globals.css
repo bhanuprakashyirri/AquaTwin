@@ -152,22 +152,15 @@ body {
 }
 
 /* ============================================================
-   Scrollbars — QuizCore hides them globally
+   Scrollbars — hidden globally (QuizCore pattern).
+   scrollbar-gutter: stable on html/body keeps layout from
+   shifting; wheel/touch/keyboard scrolling still works.
    ============================================================ */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #c9d6ce transparent;
+  scrollbar-width: none;
 }
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-*::-webkit-scrollbar-thumb {
-  background: #c9d6ce;
-  border-radius: 999px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
+  display: none;
 }
 
 /* ============================================================
