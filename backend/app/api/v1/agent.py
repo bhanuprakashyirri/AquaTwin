@@ -8,10 +8,10 @@ simulation, water-budget optimization) that the frontend applies.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.v1.dashboard import recommendation, system_status
@@ -84,6 +84,7 @@ class AgentMessage(BaseModel):
 class AgentChatRequest(BaseModel):
     messages: List[AgentMessage]
     currentPath: str = "/"
+    geminiApiKey: Optional[str] = None
 
 
 class AgentToolContext:
@@ -483,8 +484,18 @@ def _execute_tool(name: str, args: Dict[str, Any], ctx: AgentToolContext) -> Dic
 
 
 # ---------------------------------------------------------------- gemini client
+ 
+@router.get("/status")
+def agent_status() -> dict:
+    has_key = bool(settings.GEMINI_API_KEY)
+    return {
+        "configured": has_key,
+        "model": settings.GEMINI_MODEL,
+        "mode": "gemini" if has_key else "local_fallback",
+    }
 
-async def _call_gemini(contents: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+async def _call_gemini(contents: List[Dict[str, Any]], api_key: str) -> Dict[str, Any]:
     url = f"{settings.GEMINI_BASE_URL.rstrip('/')}/models/{settings.GEMINI_MODEL}:generateContent"
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
@@ -493,10 +504,10 @@ async def _call_gemini(contents: List[Dict[str, Any]]) -> Dict[str, Any]:
         "generationConfig": {"temperature": 0.35},
     }
     async with httpx.AsyncClient(timeout=GEMINI_TIMEOUT_S) as client:
-        res = await client.post(url, params={"key": settings.GEMINI_API_KEY}, json=payload)
+        res = await client.post(url, params={"key": api_key}, json=payload)
     if res.status_code != 200:
         logger.error(f"Gemini API error {res.status_code}: {res.text[:500]}")
-        raise RuntimeError(f"Gemini API returned {res.status_code}")
+        raise RuntimeError(f"Gemini API returned {res.status_code}: {res.text[:200]}")
     return res.json()
 
 
@@ -515,8 +526,10 @@ def _merge_consecutive(messages: List[AgentMessage]) -> List[Dict[str, Any]]:
 
 
 @router.post("/chat")
-async def agent_chat(req: AgentChatRequest) -> dict:
-    if not settings.GEMINI_API_KEY:
+async def agent_chat(req: AgentChatRequest, request: Request) -> dict:
+    header_key = request.headers.get("x-gemini-api-key")
+    api_key = (req.geminiApiKey or header_key or settings.GEMINI_API_KEY or "").strip()
+    if not api_key:
         raise HTTPException(status_code=503, detail="gemini_not_configured")
 
     ctx = AgentToolContext(req.currentPath)
@@ -527,7 +540,7 @@ async def agent_chat(req: AgentChatRequest) -> dict:
     last_text = ""
     try:
         for _ in range(MAX_TOOL_ROUNDS):
-            data = await _call_gemini(contents)
+            data = await _call_gemini(contents, api_key=api_key)
             candidates = data.get("candidates") or []
             parts = (candidates[0].get("content") or {}).get("parts") or []
 

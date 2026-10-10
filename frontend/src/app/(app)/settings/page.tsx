@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Database, Satellite, Server, Wifi, Cpu, ShieldCheck, UserCheck, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { Database, Satellite, Server, Wifi, Cpu, ShieldCheck, UserCheck, Save, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { fetchHealth, fetchSafetyPolicy, fetchSystemStatus } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { useAuth } from "@/context/auth-context";
 import { useFarm } from "@/context/farm-context";
+import { getGeminiApiKey, setGeminiApiKey } from "@/agent/engine";
 
 const INTEGRATIONS = [
   {
@@ -72,6 +73,21 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [geminiKey, setGeminiKey] = useState("");
+  const [geminiSaved, setGeminiSaved] = useState(false);
+
+  useEffect(() => {
+    const k = getGeminiApiKey();
+    if (k) setGeminiKey(k);
+  }, []);
+
+  const handleSaveGeminiKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGeminiApiKey(geminiKey);
+    setGeminiSaved(true);
+    setTimeout(() => setGeminiSaved(false), 3000);
+  };
 
   useEffect(() => {
     if (currentFarm) {
@@ -357,6 +373,67 @@ export default function SettingsPage() {
                 )}
               </button>
             </div>
+          </form>
+        </div>
+      </Panel>
+
+      {/* Google Gemini AI Voice & Reasoning */}
+      <Panel>
+        <PanelHeader
+          title="Google Gemini AI Voice & Field Agent"
+          subtitle="Configure your Gemini API key to power conversational reasoning and aloud voice synthesis"
+          right={
+            <DataBadge tone={geminiKey ? "good" : "neutral"}>
+              {geminiKey ? "Connected" : "Unset / Fallback"}
+            </DataBadge>
+          }
+        />
+        <div className="p-5">
+          <form onSubmit={handleSaveGeminiKey} className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="max-w-xl">
+                <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <Sparkles size={16} className="text-brand" />
+                  Gemini Flash 2.5 API Key
+                </div>
+                <p className="mt-1 text-xs text-ink-muted leading-relaxed">
+                  Allows Aqua to inspect live soil telemetry, forecast rain windows, calculate irrigation requirements, and speak responses aloud with natural voice synthesis.
+                </p>
+              </div>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-semibold text-brand hover:underline shrink-0"
+              >
+                Get Free Gemini Key →
+              </a>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <input
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="flex-1 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm text-ink font-mono placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand px-6 py-2 text-xs font-semibold text-white shadow-sm hover:bg-brand-dark transition-colors cursor-pointer"
+              >
+                {geminiSaved ? (
+                  <>
+                    <CheckCircle2 size={14} /> Key Saved!
+                  </>
+                ) : (
+                  "Save Gemini Key"
+                )}
+              </button>
+            </div>
+            <p className="text-micro text-ink-muted">
+              Picks up automatically from <code className="rounded bg-subtle px-1 text-ink">NEXT_PUBLIC_GEMINI_API_KEY</code>, backend <code className="rounded bg-subtle px-1 text-ink">GEMINI_API_KEY</code>, or this browser input.
+            </p>
           </form>
         </div>
       </Panel>

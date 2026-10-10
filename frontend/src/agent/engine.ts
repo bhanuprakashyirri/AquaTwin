@@ -120,6 +120,24 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://localhost:8000";
 
+export function getGeminiApiKey(): string | null {
+  if (typeof window !== "undefined") {
+    const key = localStorage.getItem("aquatwin_gemini_api_key");
+    if (key && key.trim()) return key.trim();
+  }
+  return process.env.NEXT_PUBLIC_GEMINI_API_KEY?.trim() || null;
+}
+
+export function setGeminiApiKey(key: string | null): void {
+  if (typeof window !== "undefined") {
+    if (key && key.trim()) {
+      localStorage.setItem("aquatwin_gemini_api_key", key.trim());
+    } else {
+      localStorage.removeItem("aquatwin_gemini_api_key");
+    }
+  }
+}
+
 /** Session-level availability cache — avoids a failed round-trip per message when the backend has no Gemini key. */
 const remoteAgent = { enabled: true };
 
@@ -127,12 +145,17 @@ async function runRemoteAgent(
   input: string,
   ctx: AgentContext,
 ): Promise<AgentResponse> {
+  const apiKey = getGeminiApiKey();
   const res = await fetch(`${API_BASE}/api/agent/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { "x-gemini-api-key": apiKey } : {}),
+    },
     body: JSON.stringify({
       messages: [...(ctx.history ?? []), { role: "user", text: input }],
       currentPath: ctx.currentPath,
+      geminiApiKey: apiKey,
     }),
   });
   if (!res.ok) {
@@ -143,6 +166,54 @@ async function runRemoteAgent(
   return (await res.json()) as AgentResponse;
 }
 
+async function runDirectGemini(
+  input: string,
+  ctx: AgentContext,
+  apiKey: string,
+): Promise<AgentResponse> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const history = (ctx.history ?? []).map((m) => ({
+    role: m.role === "user" ? "user" : "model",
+    parts: [{ text: m.text }],
+  }));
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [
+          {
+            text:
+              "You are Aqua, the intelligent voice agent for AquaTwin precision irrigation digital twin. " +
+              "Answer questions conversationally in 1-3 spoken-friendly sentences. " +
+              "Give actionable irrigation advice based on soil moisture, weather forecasts, and water conservation. " +
+              "When relevant, recommend viewing the Dashboard, Field Twin, What-If Simulator, or Water Budget.",
+          },
+        ],
+      },
+      contents: [...history, { role: "user", parts: [{ text: input }] }],
+      generationConfig: { temperature: 0.4 },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Direct Gemini API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+  // Infer relevant site action via intent detector
+  let actions: SiteAction[] = [];
+  try {
+    const local = await runLocalAgent(input, ctx);
+    actions = local.actions;
+  } catch {}
+
+  return { text: text.trim(), actions };
+}
+
 export async function runAgent(
   input: string,
   ctx: AgentContext,
@@ -150,15 +221,23 @@ export async function runAgent(
   const text = input.trim();
   if (!text) return { text: UNKNOWN_TEXT, actions: [] };
 
-  // Gemini Flash drives the agent when the backend has GEMINI_API_KEY
-  // configured; the deterministic engine below is the offline fallback.
-  if (remoteAgent.enabled) {
-    try {
-      return await runRemoteAgent(text, ctx);
-    } catch {
-      remoteAgent.enabled = false;
+  const apiKey = getGeminiApiKey();
+
+  // 1. Try remote backend agent with tools
+  try {
+    return await runRemoteAgent(text, ctx);
+  } catch {
+    // 2. If backend failed or key is in frontend, try direct Gemini Flash
+    if (apiKey) {
+      try {
+        return await runDirectGemini(text, ctx, apiKey);
+      } catch (e) {
+        console.warn("Direct Gemini call failed:", e);
+      }
     }
   }
+
+  // 3. Deterministic offline heuristic engine
   return runLocalAgent(text, ctx);
 }
 

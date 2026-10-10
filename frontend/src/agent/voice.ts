@@ -1,7 +1,6 @@
 /**
  * Browser voice session — speech-to-text via SpeechRecognition and
- * text-to-speech via SpeechSynthesis. No phone number, no API key,
- * no telephony: everything happens inside the browser.
+ * text-to-speech via SpeechSynthesis.
  *
  * Supports barge-in (the user can talk while Aqua is speaking),
  * interim transcripts, and auto-restart after silence.
@@ -14,6 +13,81 @@ export interface VoiceSessionCallbacks {
   onInterimTranscript?: (text: string) => void;
   onFinalTranscript?: (text: string) => void;
   onError?: (message: string) => void;
+}
+
+export function cleanTextForSpeech(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/[*_#`~>]/g, "")
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\b(?:₹|INR)\s*(\d+)/gi, "$1 rupees")
+    .replace(/\bha\b/gi, "hectares")
+    .replace(/\bmm\b/gi, "millimeters")
+    .replace(/\bL\b/g, "litres")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+
+function startHeartbeat() {
+  if (keepAliveTimer) clearInterval(keepAliveTimer);
+  keepAliveTimer = setInterval(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis?.speaking) {
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    } else {
+      if (keepAliveTimer) clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
+  }, 10000);
+}
+
+function stopHeartbeat() {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+  }
+}
+
+export function speakAloud(
+  text: string,
+  onStart?: () => void,
+  onEnd?: () => void,
+): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  const clean = cleanTextForSpeech(text);
+  if (!clean) return;
+
+  window.speechSynthesis.cancel();
+  stopHeartbeat();
+
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  const voice = pickVoice();
+  if (voice) utterance.voice = voice;
+
+  utterance.onstart = () => {
+    startHeartbeat();
+    onStart?.();
+  };
+
+  utterance.onend = () => {
+    stopHeartbeat();
+    onEnd?.();
+  };
+
+  utterance.onerror = () => {
+    stopHeartbeat();
+    onEnd?.();
+  };
+
+  setTimeout(() => {
+    window.speechSynthesis.speak(utterance);
+  }, 60);
 }
 
 export class AquaVoiceSession {
@@ -82,7 +156,6 @@ export class AquaVoiceSession {
           /* already running */
         }
       }
-      // while processing, the widget calls resume() when the agent finishes
     };
 
     this.recognition = rec;
@@ -94,7 +167,6 @@ export class AquaVoiceSession {
     return true;
   }
 
-  /** Called by the widget after the agent finishes processing a turn. */
   resume(): void {
     this.processing = false;
     if (this.active && this.recognition) {
@@ -108,23 +180,23 @@ export class AquaVoiceSession {
   }
 
   speak(text: string): void {
-    if (typeof speechSynthesis === "undefined" || !text.trim()) return;
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.02;
-    utterance.pitch = 1;
-    const voice = pickVoice();
-    if (voice) utterance.voice = voice;
-    utterance.onstart = () => this.emitState("speaking");
-    utterance.onend = () => {
-      if (this.active) this.emitState("listening");
-    };
-    speechSynthesis.speak(utterance);
+    speakAloud(
+      text,
+      () => this.emitState("speaking"),
+      () => {
+        if (this.active) this.emitState("listening");
+        else this.emitState("idle");
+      },
+    );
   }
 
   stopSpeaking(): void {
-    if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      stopHeartbeat();
+    }
     if (this.active) this.emitState("listening");
+    else this.emitState("idle");
   }
 
   stop(): void {
@@ -146,13 +218,14 @@ export class AquaVoiceSession {
 }
 
 function pickVoice(): SpeechSynthesisVoice | null {
-  if (typeof speechSynthesis === "undefined") return null;
-  const voices = speechSynthesis.getVoices();
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+  const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
   return (
     voices.find((v) => /en[-_]US/i.test(v.lang) && /google|natural|aria|samantha|jenny/i.test(v.name)) ??
     voices.find((v) => /en[-_]US/i.test(v.lang)) ??
     voices.find((v) => /^en/i.test(v.lang)) ??
+    voices[0] ??
     null
   );
 }
