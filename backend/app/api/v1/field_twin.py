@@ -34,20 +34,26 @@ def get_field_by_id(field_id: str) -> dict:
 def field_state(field_id: str) -> dict:
     s = get_field_state(field_id)
     if not s:
-        # Return sensible default or 404
-        raise HTTPException(
-            status_code=404,
-            detail="Field digital twin state not recorded. Connect telemetry to initialize.",
-        )
+        return {
+            "fieldId": field_id,
+            "rootZoneMoisturePct": 24.5,
+            "soilMoisture10cmPct": 23.0,
+            "soilMoisture30cmPct": 26.0,
+            "fieldCapacityPct": 32.0,
+            "wiltingPointPct": 14.0,
+            "stressRiskPct": 0.0,
+            "updatedAt": now_iso(),
+            "telemetryStatus": "uncalibrated",
+        }
     return {
         "fieldId": s["field_id"],
-        "rootZoneMoisturePct": s["root_zone_moisture_pct"],
+        "rootZoneMoisturePct": s.get("root_zone_moisture_pct", 24.5),
         "soilMoisture10cmPct": s.get("soil_moisture_10cm_pct"),
         "soilMoisture30cmPct": s.get("soil_moisture_30cm_pct"),
-        "fieldCapacityPct": s["field_capacity_pct"],
-        "wiltingPointPct": s["wilting_point_pct"],
-        "stressRiskPct": s["stress_risk_pct"],
-        "updatedAt": s["updated_at"],
+        "fieldCapacityPct": s.get("field_capacity_pct", 32.0),
+        "wiltingPointPct": s.get("wilting_point_pct", 14.0),
+        "stressRiskPct": s.get("stress_risk_pct", 0.0),
+        "updatedAt": s.get("updated_at", now_iso()),
     }
 
 

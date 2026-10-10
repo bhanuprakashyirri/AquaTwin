@@ -80,8 +80,8 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
       resolvedFarms = metaFarms;
     }
 
-    // 2. Query Supabase relational tables if available
-    if (isSupabaseConfigured) {
+    // 2. Query Supabase relational tables if user metadata is empty
+    if (isSupabaseConfigured && resolvedFarms.length === 0) {
       try {
         const { data: dbFarms, error } = await supabase
           .from("farms")

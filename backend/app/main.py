@@ -47,6 +47,18 @@ def health() -> dict:
     }
 
 
+@app.get("/api/agent/status", tags=["agent"])
+@app.get("/api/v1/agent/status", tags=["agent"])
+@app.get("/agent/status", tags=["agent"])
+def agent_status() -> dict:
+    has_key = bool(settings.GEMINI_API_KEY)
+    return {
+        "configured": has_key,
+        "model": settings.GEMINI_MODEL,
+        "mode": "gemini" if has_key else "local_fallback",
+    }
+
+
 # Mount API routers
 app.include_router(api_router, prefix="/api")
 app.include_router(api_router, prefix="/api/v1")

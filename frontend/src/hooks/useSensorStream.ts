@@ -79,8 +79,21 @@ export function useSensorStream(fieldId: string, enabled = true): SensorStreamSt
     return () => {
       disposed = true;
       if (ws) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
         ws.onclose = null;
-        ws.close();
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          ws.onopen = () => {
+            try {
+              ws?.close();
+            } catch {
+              /* ignore */
+            }
+          };
+        }
       }
     };
   }, [fieldId, enabled]);
