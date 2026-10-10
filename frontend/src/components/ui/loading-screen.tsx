@@ -5,8 +5,8 @@ import Image from "next/image";
 
 type InitState = "initializing" | "ready" | "error";
 
-const INIT_TIMEOUT_MS = 8000;
-const MIN_DISPLAY_MS = 250;
+const INIT_TIMEOUT_MS = 3000;
+const MIN_DISPLAY_MS = 120;
 const SESSION_STORAGE_KEY = "aquatwin_ready";
 
 const API_BASE_URL =
@@ -47,7 +47,7 @@ export function LoadingScreen() {
 
     const startTime = Date.now();
 
-    // 8-second safety timeout
+    // 3-second safety timeout
     const timeoutTimer = setTimeout(() => {
       ctrl.abort();
     }, INIT_TIMEOUT_MS);
@@ -64,36 +64,28 @@ export function LoadingScreen() {
         throw new Error("Essential service connection failed (simulated service disruption).");
       }
 
-      // Essential core service check — non-blocking to all domain sub-services
+      // Essential core service check — non-blocking to all domain sub-services.
+      // Both endpoints are probed in parallel so the fastest healthy
+      // response wins (a sequential fallback doubles the worst case).
       let healthy = false;
       try {
-        const res = await fetch(`${API_BASE_URL}/api/health`, {
-          signal: ctrl.signal,
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
-        healthy = res.ok;
-      } catch (err: any) {
-        if (err?.name === "AbortError") {
-          throw new Error("Startup timed out waiting for field services (8s limit).");
-        }
-        // Try fallback root /health if /api/health failed
-        try {
-          const resFallback = await fetch(`${API_BASE_URL}/health`, {
+        const probe = (path: string) =>
+          fetch(`${API_BASE_URL}${path}`, {
             signal: ctrl.signal,
             headers: { Accept: "application/json" },
             cache: "no-store",
-          });
-          healthy = resFallback.ok;
-        } catch (innerErr: any) {
-          if (innerErr?.name === "AbortError") {
-            throw new Error("Startup timed out waiting for field services (8s limit).");
-          }
-          // If backend is unreachable in dev, we report a clear actionable error
-          throw new Error(
-            `Unable to reach field services at ${API_BASE_URL}. Ensure the backend service is running.`
-          );
+          })
+            .then((r) => r.ok)
+            .catch(() => false);
+        healthy = await Promise.any([probe("/api/health"), probe("/health")]);
+      } catch {
+        if (ctrl.signal.aborted) {
+          throw new Error("Startup timed out waiting for field services (3s limit).");
         }
+        // Backend unreachable — report a clear actionable error
+        throw new Error(
+          `Unable to reach field services at ${API_BASE_URL}. Ensure the backend service is running.`
+        );
       }
 
       clearTimeout(timeoutTimer);
@@ -121,7 +113,7 @@ export function LoadingScreen() {
         if (isMountedRef.current) {
           setVisible(false);
         }
-      }, 240);
+      }, 150);
     } catch (err: any) {
       clearTimeout(timeoutTimer);
       if (!isMountedRef.current) return;
@@ -131,8 +123,8 @@ export function LoadingScreen() {
         err instanceof Error
           ? err.message
           : isAborted
-          ? "Startup timed out waiting for field services (8s limit)."
-          : "Unexpected error during workspace startup.";
+            ? "Startup timed out waiting for field services (3s limit)."
+            : "Unexpected error during workspace startup.";
 
       if (process.env.NODE_ENV !== "production") {
         console.warn("[AquaTwin Startup]", message);

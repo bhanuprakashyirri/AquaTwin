@@ -3,7 +3,15 @@
  */
 
 import { tryFetch } from "./api-client";
-import type { Farm, Recommendation, SystemStatus } from "@/types";
+import type { BackendHealth, Farm, Recommendation, SystemStatus } from "@/types";
+
+export async function fetchHealth() {
+  const data = await tryFetch<BackendHealth>("/api/health");
+  return {
+    data,
+    error: data ? null : "Backend unreachable",
+  };
+}
 
 export async function fetchFarms(): Promise<{ data: { farms: Farm[] } | null; error: string | null }> {
   const data = await tryFetch<{ farms: Farm[] }>("/api/farms");

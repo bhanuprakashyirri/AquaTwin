@@ -181,7 +181,7 @@ export default function DashboardPage() {
         <KpiCard
           index={3}
           label="Water available"
-          value={fmtL(2000)}
+          value={rec?.availableWaterL != null ? fmtL(rec.availableWaterL) : "—"}
           sub="Configured quota"
           info={<>Total water available for this irrigation window. Adjust quota in Water Budget.</>}
         />
@@ -189,10 +189,10 @@ export default function DashboardPage() {
 
       {/* Supporting indicators */}
       <div className="mt-3 grid grid-cols-2 gap-x-6 rounded-xl2 border border-line bg-surface px-4 py-1 shadow-card sm:grid-cols-4">
-        <MiniIndicator label="Recommended water" value={rec?.waterSavedL ? fmtL(720 - rec.waterSavedL) : "—"} />
+        <MiniIndicator label="Recommended water" value={rec?.waterUsedL != null ? fmtL(rec.waterUsedL) : "—"} />
         <MiniIndicator label="Estimated saving" value={rec?.waterSavedL ? fmtL(rec.waterSavedL) : "—"} />
         <MiniIndicator label="Last irrigation" value={lastIrrigated} />
-        <MiniIndicator label="Evapotranspiration" value="3.4 mm/day (FAO-56)" />
+        <MiniIndicator label="Evapotranspiration" value={wxQ.data?.summary?.et0Mm != null ? `${wxQ.data.summary.et0Mm.toFixed(1)} mm/day (FAO-56)` : "—"} />
       </div>
 
       {/* Main 2-col layout */}

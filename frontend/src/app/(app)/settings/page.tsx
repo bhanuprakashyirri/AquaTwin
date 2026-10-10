@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Database, Satellite, Server, Wifi, Cpu, ShieldCheck, UserCheck, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
-import { fetchSystemStatus } from "@/services/api";
+import { fetchHealth, fetchSafetyPolicy, fetchSystemStatus } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { useAuth } from "@/context/auth-context";
 import { useFarm } from "@/context/farm-context";
@@ -137,6 +137,12 @@ export default function SettingsPage() {
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0] ||
     "AquaTwin Operator";
+  const healthQ = useApiData(() => fetchHealth());
+  const policyQ = useApiData(() => fetchSafetyPolicy());
+
+  const policy = policyQ.data?.policy ?? {};
+  const crops = policyQ.data?.crops ?? {};
+  const cropRows = Object.entries(crops);
 
   return (
     <div className="mx-auto max-w-[1040px] space-y-6">
@@ -426,6 +432,16 @@ export default function SettingsPage() {
             </code>
           </div>
           <div className="flex flex-wrap items-center justify-between border-b border-line/70 pb-2">
+            <span>Backend health:</span>
+            {healthQ.data ? (
+              <DataBadge tone={healthQ.data.status === "ok" ? "good" : "warn"}>
+                {healthQ.data.status} · {healthQ.data.environment}
+              </DataBadge>
+            ) : (
+              <DataBadge tone="warn">unreachable</DataBadge>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-between border-b border-line/70 pb-2">
             <span>Physical Modeling Standard:</span>
             <span className="font-medium text-ink">FAO-56 Irrigation & Drainage Paper No. 56</span>
           </div>
@@ -433,6 +449,67 @@ export default function SettingsPage() {
             <span>Constrained Optimization Protocol:</span>
             <span className="font-medium text-ink">Google OR-Tools CP-SAT Constraint Programming</span>
           </div>
+        </div>
+      </Panel>
+
+      <Panel className="mb-8">
+        <PanelHeader
+          title="Missed-rain safety policy"
+          subtitle="Calibrated thresholds for the electricity-slot protection engine"
+          right={policyQ.data ? <DataBadge tone="good">active</DataBadge> : null}
+        />
+        <div className="p-5">
+          {policyQ.data ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  ["Max acceptable stress", `${Math.round((policy.max_acceptable_stress as number) * 100)}%`],
+                  ["Max depletion fraction", `${Math.round((policy.max_depletion_fraction as number) * 100)}%`],
+                  ["Max saturation fraction", `${Math.round((policy.max_saturation_fraction as number) * 100)}%`],
+                  ["Max data age", `${policy.max_data_age_hours} h`],
+                ].map(([k, v]) => (
+                  <div key={k} className="rounded-xl border border-line bg-subtle p-3">
+                    <div className="text-micro font-bold uppercase tracking-wider text-ink-muted">{k}</div>
+                    <div className="mt-1 text-sm font-bold text-ink">{v}</div>
+                  </div>
+                ))}
+              </div>
+              {cropRows.length ? (
+                <div>
+                  <div className="mb-2 text-tiny font-semibold text-ink">Crop MAD thresholds (maximum allowable depletion)</div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-tiny">
+                      <thead className="border-b border-line bg-subtle text-micro font-bold uppercase tracking-wider text-ink-muted">
+                        <tr>
+                          <th className="px-4 py-2">Crop</th>
+                          <th className="px-4 py-2 text-right">MAD (p)</th>
+                          <th className="px-4 py-2 text-right">Stage sensitivity</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {cropRows.map(([crop, profile]) => (
+                          <tr key={crop} className="transition-colors hover:bg-subtle/70">
+                            <td className="px-4 py-2.5 font-semibold text-ink">{crop}</td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-brand-dark">{profile.mad.toFixed(2)}</td>
+                            <td className="px-4 py-2.5 text-right text-ink-muted">
+                              {profile.stage_sensitivity.map((s) => s.toFixed(1)).join(" · ")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+              <p className="border-t border-line pt-3 text-micro leading-relaxed text-ink-faint">
+                Thresholds are calibrated per crop from the field-day and train/val datasets (see dataset/dataset_meta.json) and can be tuned per request via policy_overrides.
+              </p>
+            </div>
+          ) : (
+            <div className="flex h-[100px] items-center justify-center text-tiny text-ink-muted">
+              Safety policy unavailable — is the backend running?
+            </div>
+          )}
         </div>
       </Panel>
     </div>

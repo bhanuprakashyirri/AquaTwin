@@ -207,6 +207,8 @@ export interface Recommendation {
   headline: string;
   reason: string;
   waterSavedL: number;
+  availableWaterL?: number;
+  waterUsedL?: number;
   stressRiskPct: number;
   confidencePct: number;
   nextEvaluationAt: string;
@@ -238,4 +240,104 @@ export interface SensorFrame {
   timestamp: string;
   source: string;
   sensors: Sensor[];
+}
+
+// ---------------------------------------------------------------------------
+// Missed-Rain Protection & Electricity-Slot Safety engine
+// ---------------------------------------------------------------------------
+
+export interface MissedRainFieldState {
+  theta: number;
+  root_depth_mm: number;
+  soil_texture: string;
+  crop_key: string;
+  growth_stage: string;
+  irrigation_efficiency: number;
+  water_budget_mm: number;
+  is_rice?: boolean;
+  pond_mm?: number;
+  data_generated_at?: string;
+}
+
+export interface PowerSlot {
+  start: string;
+  hours: number;
+  reliable: boolean;
+}
+
+export interface DailyForecastInput {
+  rain_mm: number;
+  et0_mm: number;
+  kc: number;
+  rain_probability: number;
+  hours_since_issue?: number;
+}
+
+export interface MissedRainRequest {
+  field_state: MissedRainFieldState;
+  power_slots: PowerSlot[];
+  daily_forecast: DailyForecastInput[];
+  policy_overrides?: Record<string, unknown>;
+  now?: string;
+}
+
+export interface MissedRainScenarioResult {
+  plan: string;
+  scenario_results: Array<{
+    scenario: string;
+    stress_risk: number;
+    [key: string]: unknown;
+  }>;
+  expected_upside?: number;
+  score?: number;
+}
+
+export interface MissedRainResult {
+  current_power_slot: { start: string; hours: number } | null;
+  next_feasible_power_slot: { start: string; hours: number } | null;
+  forecast_rain_probability: number | null;
+  forecast_uncertainty_status: string;
+  no_rain_scenario_stress_risk: number;
+  recommended_irrigation_action: string;
+  recommended_irrigation_amount_mm: number;
+  risk_of_waiting_until_next_slot: number;
+  reason_for_recommendation: string;
+  farmer_warning: string | null;
+  data_quality_status: string;
+  confidence_status: string;
+  scenario_analysis: MissedRainScenarioResult[];
+  guard: { trigger: boolean; reason?: string; verdict?: string };
+  policy_used: Record<string, unknown>;
+  infeasible: boolean;
+  infeasibility_reason?: string;
+  status?: string;
+  message?: string;
+}
+
+export interface SafetyPolicy {
+  policy: Record<string, unknown>;
+  crops: Record<string, { mad: number; stage_sensitivity: number[] }>;
+  dataset: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Analytics summary (168h twin prediction + history + weather)
+// ---------------------------------------------------------------------------
+
+export interface AnalyticsSummary {
+  moistureTimeline: TimelinePoint[];
+  history: IrrigationEvent[];
+  forecast: WeatherForecastRow[];
+  observations: WeatherObservationRow[];
+}
+
+// ---------------------------------------------------------------------------
+// Backend health
+// ---------------------------------------------------------------------------
+
+export interface BackendHealth {
+  status: string;
+  service: string;
+  environment: string;
+  apiPrefix: string;
 }

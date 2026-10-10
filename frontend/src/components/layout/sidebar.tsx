@@ -20,8 +20,10 @@ import {
   Leaf,
   ChevronRight,
   Zap,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRecentActions } from "@/lib/recent-actions";
 
 const NAV_INTELLIGENCE = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, desc: "Farm KPIs & alerts" },
@@ -40,12 +42,68 @@ const NAV_OPERATIONS = [
 import { useAuth } from "@/context/auth-context";
 import { useFarm } from "@/context/farm-context";
 
+function SidebarRecentActions() {
+  const [expanded, setExpanded] = useState(false);
+  const { actions } = useRecentActions();
+
+  return (
+    <div className="mt-8">
+      <button 
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between group px-4 mb-2"
+      >
+        <div className="flex items-center gap-2">
+          <Clock size={11} className="text-[#8AAAA0]" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8AAAA0] group-hover:text-brand transition-colors">
+            Recently Performed
+          </span>
+        </div>
+        <ChevronRight 
+          size={12} 
+          className={cn(
+            "text-[#8AAAA0] transition-transform duration-200",
+            expanded && "rotate-90"
+          )} 
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-1 space-y-1">
+          {actions.length === 0 ? (
+            <div className="px-4 py-3 mx-2 text-[11px] text-[#8AAAA0] text-center border border-dashed border-[#D5E4DF] rounded-xl">
+              No recent actions
+            </div>
+          ) : (
+            actions.map((action) => (
+              <div 
+                key={action.id} 
+                className="flex justify-between items-center group cursor-pointer hover:bg-[#F0F4F2] px-4 py-2 rounded-xl mx-2 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#D5E4DF] group-hover:bg-brand transition-colors shrink-0" />
+                  <span className="text-[12px] font-medium text-ink-muted group-hover:text-ink transition-colors truncate">
+                    {action.title}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono text-[#8AAAA0] shrink-0 bg-white/50 px-1 rounded border border-[#EBF0ED]">
+                  {action.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
   const { currentFarm, currentField, hasConfiguredFarm, openFarmSetup } = useFarm();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const { addAction } = useRecentActions();
 
   const fullName =
     user?.user_metadata?.full_name ||
@@ -100,6 +158,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               if (pathname !== item.href) {
                 setPendingHref(item.href);
               }
+              addAction(`Viewed ${item.label}`);
               onNavigate?.();
             }}
             aria-current={isCurrent ? "page" : undefined}
@@ -194,6 +253,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           {renderNavGroup(NAV_OPERATIONS)}
         </div>
+
+        <SidebarRecentActions />
       </nav>
 
       {/* Divider */}

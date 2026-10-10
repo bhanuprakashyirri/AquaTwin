@@ -3,7 +3,7 @@
  */
 
 import { tryFetch } from "./api-client";
-import type { IrrigationEvent, OptimizationResult, Zone } from "@/types";
+import type { AnalyticsSummary, IrrigationEvent, OptimizationResult, Zone } from "@/types";
 
 export async function postOptimize(
   availableWaterL: number,
@@ -29,6 +29,16 @@ export async function postOptimize(
   };
 }
 
+export async function fetchWaterBudget(fieldId: string = "field-a") {
+  const data = await tryFetch<{ availableWaterL: number }>(
+    `/api/water-budget?field_id=${fieldId}`
+  );
+  return {
+    data: data ?? { availableWaterL: 2000 },
+    error: data ? null : "Water budget unavailable",
+  };
+}
+
 export async function fetchHistory(fieldId: string) {
   const data = await tryFetch<{ events: IrrigationEvent[] }>(`/api/fields/${fieldId}/history`);
   return {
@@ -51,5 +61,13 @@ export async function fetchWaterFingerprint(fieldId: string = "field-a") {
   return {
     data,
     error: data ? null : "Water fingerprint unavailable",
+  };
+}
+
+export async function fetchAnalyticsSummary(fieldId: string = "field-a") {
+  const data = await tryFetch<AnalyticsSummary>(`/api/analytics/summary?field_id=${fieldId}`);
+  return {
+    data,
+    error: data ? null : "Analytics summary unavailable",
   };
 }

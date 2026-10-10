@@ -1,8 +1,13 @@
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import React, { type ReactNode, useState } from "react";
+import { Clock } from "lucide-react";
+import { Button } from "./button";
+import { useToast } from "./toast";
+import { useRecentActions } from "@/lib/recent-actions";
 
 /**
- * Workspace card — standard white surface for interactive content.
+ 
+* Workspace card — standard white surface for interactive content.
  * Pass `interactive` for cards the user can act on: hover deepens the border
  * and lifts the card slightly (QuizCore-style restrained elevation).
  */
@@ -81,6 +86,105 @@ export function DataBadge({
   );
 }
 
-export function DemoPill() {
-  return null;
+export function RecentlyViewed({ items }: { items: { id: string; title: string; timestamp: Date }[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Panel className="w-full mx-auto overflow-hidden">
+      <button 
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-variant transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Clock size={16} className="text-brand" />
+          <h3 className="font-bold text-ink">Recently Viewed</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <span className="bg-brand-light text-brand-dark px-2 py-0.5 rounded-full text-micro font-bold">
+              {items.length}
+            </span>
+          )}
+          <span className="text-ink-muted text-sm">{expanded ? "Hide" : "Show"}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-line px-5 py-3">
+          {items.length === 0 ? (
+            <p className="text-sm text-ink-muted text-center py-4">No recent actions.</p>
+          ) : (
+            <div className="space-y-3 py-2">
+              {items.map((item) => (
+                <div key={item.id} className="flex justify-between items-center text-sm group">
+                  <span className="text-ink font-medium group-hover:text-brand transition-colors cursor-pointer">
+                    {item.title}
+                  </span>
+                  <span className="text-tiny text-ink-muted font-mono bg-surface-variant px-1.5 py-0.5 rounded border border-line">
+                    {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+export function ActionDemo() {
+  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+  const { actions, addAction } = useRecentActions();
+  const { toast } = useToast();
+
+  const handleAction = async (actionName: string) => {
+    setStatus("loading");
+    // Simulate a network request
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    setStatus("success");
+    toast(`${actionName} completed!`, "success");
+    
+    // Add to global history
+    addAction(actionName);
+
+    // Reset button after a short delay
+    setTimeout(() => {
+      setStatus("idle");
+    }, 2000);
+  };
+
+  return (
+    <div className="max-w-md w-full mx-auto space-y-6">
+      {/* Primary Action Section */}
+      <Panel className="p-6 text-center">
+        <h3 className="font-bold text-ink mb-2">Perform Action</h3>
+        <p className="text-sm text-ink-muted mb-6">
+          Trigger an action below to add it to your recently viewed history.
+        </p>
+        
+        <div className="flex gap-3 justify-center">
+          <Button 
+            variant="primary"
+            loading={status === "loading"}
+            success={status === "success"}
+            onClick={() => handleAction("Run Simulation")}
+          >
+            Run Simulation
+          </Button>
+          <Button 
+            variant="outline"
+            disabled={status === "loading"}
+            onClick={() => handleAction("View Report")}
+          >
+            View Report
+          </Button>
+        </div>
+      </Panel>
+
+      {/* Separate Recently Viewed Section */}
+      <RecentlyViewed items={actions} />
+    </div>
+  );
 }

@@ -7,4 +7,5 @@ export * from "./dashboard.service";
 export * from "./field-twin.service";
 export * from "./simulation.service";
 export * from "./irrigation.service";
+export * from "./safety.service";
 export type { DataSource } from "@/hooks/useApiData";

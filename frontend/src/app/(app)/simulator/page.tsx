@@ -8,6 +8,7 @@ import {
   Droplets,
   FlaskConical,
   Play,
+  RefreshCcw,
   Sprout,
 } from "lucide-react";
 import {
@@ -29,16 +30,28 @@ import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
 import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { EASE, DURATION, fadeUp, tabContent, staggerContainer } from "@/lib/motion";
 import {
+  fetchField,
   fetchFieldState,
   fetchSystemStatus,
   fetchWeather,
+  postMissedRain,
   postRainUncertainty,
   postSimulation,
 } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { fmtL, stressColor, wasteColor } from "@/lib/format";
 import { FC, WP, STRESS_THRESHOLD_PCT } from "@/lib/constants";
-import type { RainUncertaintyScenario, SimulationResult } from "@/types";
+import type {
+  DailyForecastInput,
+  Field,
+  FieldTwinState,
+  MissedRainRequest,
+  MissedRainResult,
+  PowerSlot,
+  RainUncertaintyScenario,
+  SimulationResult,
+  WeatherForecastRow,
+} from "@/types";
 
 type Mode = "strategy" | "rain";
 
@@ -53,18 +66,103 @@ const STRATEGIES = [
 
 const PROGRESS_STEPS = ["Preparing field state", "Projecting future conditions", "Comparing outcomes", "Decision ready"];
 
+const SAFETY_ACTION_LABELS: Record<string, string> = {
+  no_irrigation: "No irrigation needed",
+  partial_irrigation: "Protective irrigation",
+  full_irrigation: "Full refill irrigation",
+};
+
+const GROWTH_STAGE_MAP: Array<[RegExp, string]> = [
+  [/initial|germination/, "INITIAL"],
+  [/vegetative|development/, "DEVELOPMENT"],
+  [/mid|reproductive|flowering|tillering/, "MID_SEASON"],
+  [/late|maturity|senescence/, "LATE_SEASON"],
+];
+
+function mapGrowthStage(stage: string): string {
+  const key = stage.toLowerCase();
+  for (const [re, label] of GROWTH_STAGE_MAP) {
+    if (re.test(key)) return label;
+  }
+  return "unknown";
+}
+
+/**
+ * Builds the missed-rain safety request from live backend data:
+ * root-zone state (theta), field metadata (soil texture, crop,
+ * growth stage) and the 48h weather forecast aggregated into
+ * daily rain/ET0 buckets. Power slots model a typical 8h
+ * agricultural power window today and tomorrow.
+ */
+function buildSafetyRequest(
+  state: FieldTwinState | null,
+  field: Field | null,
+  wx: { forecast: WeatherForecastRow[] } | null,
+): MissedRainRequest | null {
+  if (!state || !field) return null;
+  const now = new Date();
+  const slot = (offsetDays: number): PowerSlot => ({
+    start: new Date(now.getTime() + offsetDays * 86400000).toISOString(),
+    hours: 8,
+    reliable: true,
+  });
+
+  const forecast = wx?.forecast ?? [];
+  const toDaily = (offset: number, hoursSince: number): DailyForecastInput => {
+    const slice = forecast.slice(offset, offset + 24);
+    const rainMm = slice.reduce((s, r) => s + r.rainfallMm, 0);
+    const et0Mm =
+      (slice.reduce((s, r) => s + r.solarRadMJm2, 0) / Math.max(1, slice.length)) * 0.45;
+    const rainProbability = Math.max(0, ...slice.map((r) => r.rainProbabilityPct)) / 100;
+    return {
+      rain_mm: rainMm,
+      et0_mm: et0Mm,
+      kc: field.crop.cropCoefficient,
+      rain_probability: rainProbability,
+      hours_since_issue: hoursSince,
+    };
+  };
+
+  const cropName = field.crop.name;
+  const isRice = /rice/i.test(cropName);
+  return {
+    field_state: {
+      theta: state.rootZoneMoisturePct / 100,
+      root_depth_mm: 700,
+      soil_texture: field.soilTexture,
+      crop_key: cropName,
+      growth_stage: mapGrowthStage(field.crop.growthStage),
+      irrigation_efficiency: isRice ? 0.6 : 0.75,
+      water_budget_mm: 500,
+      is_rice: isRice,
+      pond_mm: 0,
+      data_generated_at: state.updatedAt,
+    },
+    power_slots: [slot(0), slot(1)],
+    daily_forecast:
+      forecast.length >= 24
+        ? [toDaily(0, 0), toDaily(24, 24)]
+        : forecast.length
+          ? [toDaily(0, 0)]
+          : [],
+  };
+}
+
 export default function SimulatorPage() {
   const { currentFarm, currentField } = useFarm();
   const fieldId = currentField?.id || "field-a";
   const stateQ = useApiData(() => fetchFieldState(fieldId), [fieldId]);
   const wxQ = useApiData(() => fetchWeather(fieldId), [fieldId]);
   const statusQ = useApiData(() => fetchSystemStatus());
+  const fieldQ = useApiData(() => fetchField("field-a"));
 
   const [mode, setMode] = useState<Mode>("strategy");
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [rain, setRain] = useState<RainUncertaintyScenario[] | null>(null);
   const [running, setRunning] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
+  const [safety, setSafety] = useState<MissedRainResult | null>(null);
+  const [safetyLoading, setSafetyLoading] = useState(false);
   const { toast } = useToast();
 
   const run = async () => {
@@ -92,6 +190,24 @@ export default function SimulatorPage() {
     () => onAgentEvent(AGENT_EVENTS.simulate, () => runRef.current()),
     [],
   );
+
+  // Missed-rain safety check — runs the slot-aware engine against
+  // forecast failure whenever the rain-failure mode is opened.
+  const runSafetyCheck = async () => {
+    const req = buildSafetyRequest(stateQ.data, fieldQ.data, wxQ.data);
+    if (!req) return;
+    setSafetyLoading(true);
+    const res = await postMissedRain(req);
+    setSafety(res.data);
+    setSafetyLoading(false);
+  };
+  const safetyRef = useRef(runSafetyCheck);
+  safetyRef.current = runSafetyCheck;
+  useEffect(() => {
+    if (mode === "rain" && !safety && stateQ.data && fieldQ.data && wxQ.data) {
+      safetyRef.current();
+    }
+  }, [mode, safety, stateQ.data, fieldQ.data, wxQ.data]);
 
   return (
     <div className="mx-auto max-w-[1440px]">
@@ -453,8 +569,81 @@ export default function SimulatorPage() {
             </>
           ) : null}
 
+          {/* Missed-rain safety check */}
+          {mode === "rain" ? (
+            <Panel>
+              <PanelHeader
+                title="Missed-rain protection"
+                subtitle="Slot-aware safety check against forecast failure"
+                right={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => safetyRef.current()}
+                    disabled={safetyLoading}
+                  >
+                    <RefreshCcw size={13} className="mr-1" /> Re-check
+                  </Button>
+                }
+              />
+              <div className="p-5">
+                {safetyLoading && !safety ? (
+                  <div className="flex h-[120px] items-center justify-center text-tiny text-ink-muted">
+                    Evaluating forecast-failure scenarios across power slots…
+                  </div>
+                ) : safety ? (
+                  <div>
+                    {safety.farmer_warning ? (
+                      <div className="mb-4 rounded-xl border border-[#E8C4C4] bg-[#FBEFEF] px-4 py-3 text-tiny leading-relaxed text-[#A03838]">
+                        <span className="font-bold">Safety warning — </span>
+                        {safety.farmer_warning}
+                      </div>
+                    ) : null}
+                    {safety.infeasible ? (
+                      <div className="mb-4 rounded-xl border border-danger/40 bg-danger/5 px-4 py-3 text-tiny leading-relaxed text-danger">
+                        {safety.infeasibility_reason ??
+                          "No feasible irrigation action keeps modeled crop stress below the safety limit before the next power slot. Human verification is required."}
+                      </div>
+                    ) : null}
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                      {[
+                        ["Recommended action", SAFETY_ACTION_LABELS[safety.recommended_irrigation_action] ?? safety.recommended_irrigation_action],
+                        ["Protective amount", `${safety.recommended_irrigation_amount_mm} mm`],
+                        ["Risk of waiting", `${(safety.risk_of_waiting_until_next_slot * 100).toFixed(0)}%`],
+                        ["No-rain stress risk", `${(safety.no_rain_scenario_stress_risk * 100).toFixed(0)}%`],
+                        ["Rain probability", safety.forecast_rain_probability !== null ? `${(safety.forecast_rain_probability * 100).toFixed(0)}%` : "—"],
+                        ["Next power slot", safety.next_feasible_power_slot
+                          ? new Date(safety.next_feasible_power_slot.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                          : "—"],
+                      ].map(([k, v]) => (
+                        <div key={k} className="rounded-xl border border-line bg-subtle p-3">
+                          <div className="text-micro font-bold uppercase tracking-wider text-ink-muted">{k}</div>
+                          <div className="mt-1 text-sm font-bold text-ink">{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-4 border-t border-line pt-3 text-tiny leading-relaxed text-ink-muted">
+                      {safety.reason_for_recommendation}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <DataBadge tone={safety.confidence_status === "high" ? "good" : safety.confidence_status === "medium" ? "warn" : "neutral"}>
+                        {safety.confidence_status} confidence
+                      </DataBadge>
+                      <DataBadge tone="neutral">{safety.forecast_uncertainty_status} forecast</DataBadge>
+                      <DataBadge tone="neutral">{safety.data_quality_status} data</DataBadge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex h-[120px] items-center justify-center text-tiny text-ink-muted">
+                    Awaiting field telemetry to run the safety check.
+                  </div>
+                )}
+              </div>
+            </Panel>
+          ) : null}
+
           {/* Rain uncertainty */}
-          {mode === "rain" && rain && !running ? (
+          {mode === "rain" && rain && rain.length >= 3 && !running ? (
             <Panel>
               <PanelHeader
                 title="What if the forecast is wrong?"
@@ -511,6 +700,16 @@ export default function SimulatorPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </Panel>
+          ) : mode === "rain" && rain && !running ? (
+            <Panel>
+              <PanelHeader
+                title="What if the forecast is wrong?"
+                subtitle="The recommended plan tested against three rain outcomes"
+              />
+              <div className="flex h-[120px] items-center justify-center text-tiny text-ink-muted">
+                Rain-uncertainty scenarios unavailable — the forecast service timed out. Run the simulation again.
               </div>
             </Panel>
           ) : null}

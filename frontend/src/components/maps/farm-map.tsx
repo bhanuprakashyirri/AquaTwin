@@ -36,6 +36,9 @@ export interface FarmMapProps {
   basemap?: BasemapKey;
   onBasemapChange?: (b: BasemapKey) => void;
   showBasemapSwitcher?: boolean;
+  /** Animated telemetry sweep overlay (ported from the Sih-HailStrom radar sweep). */
+  showSweep?: boolean;
+  /** Label rendered on the field centroid marker + popup. */
   fieldLabel?: string;
 }
 
@@ -66,28 +69,32 @@ export function FarmMap({
   basemap,
   onBasemapChange,
   showBasemapSwitcher = true,
+  showSweep = true,
   fieldLabel = "Field A",
 }: FarmMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fieldMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const sweepCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sweepAngleRef = useRef(0);
   const [ready, setReady] = useState(false);
   const [hover, setHover] = useState<{ x: number; y: number; z: Zone } | null>(null);
   const [sensorHover, setSensorHover] = useState<{ x: number; y: number; kind: string; value: number } | null>(null);
-  const [internalBasemap, setInternalBasemap] = useState<BasemapKey>(basemap ?? "light");
+  const [internalBasemap, setInternalBasemap] = useState<BasemapKey>(basemap ?? "satellite");
   const [styleEpoch, setStyleEpoch] = useState(0);
   const [overlaysOpen, setOverlaysOpen] = useState(false);
   const [overlays, setOverlays] = useState({
     zones: true,
     sensors: true,
+    sweep: showSweep,
     boundary: true,
   });
   const zonesRef = useRef(zones);
   const onZoneSelectRef = useRef(onZoneSelect);
   const interactRef = useRef(false);
   const fitRef = useRef(false);
-  const initialBasemapRef = useRef<BasemapKey>(basemap ?? "light");
-  const basemapRef = useRef(basemap ?? "light");
+  const initialBasemapRef = useRef<BasemapKey>(basemap ?? "satellite");
+  const basemapRef = useRef(basemap ?? "satellite");
   zonesRef.current = zones;
   onZoneSelectRef.current = onZoneSelect;
   basemapRef.current = basemap ?? internalBasemap;
@@ -199,7 +206,10 @@ export function FarmMap({
     }
 
     map.addSource("context", { type: "geojson", data: contextFc });
-    map.addLayer({ id: "context-fill", type: "fill", source: "context", paint: { "fill-color": ["get", "color"], "fill-opacity": 1 } });
+    // Only parcels are filled — the track is a LineString whose missing
+    // `color` property would otherwise evaluate to null and log a parse
+    // warning for every tile.
+    map.addLayer({ id: "context-fill", type: "fill", source: "context", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": ["get", "color"], "fill-opacity": 1 } });
     map.addLayer({
       id: "context-track",
       type: "line",
@@ -485,6 +495,105 @@ export function FarmMap({
     );
   };
 
+  // Size the sweep canvas to the container (device pixels for crisp rendering)
+  useEffect(() => {
+    const canvas = sweepCanvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const resize = () => {
+      canvas.width = Math.max(1, Math.floor(container.clientWidth * dpr));
+      canvas.height = Math.max(1, Math.floor(container.clientHeight * dpr));
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
+  // Animated telemetry sweep overlay — ported from the Sih-HailStrom radar
+  // sweep: range rings, crosshairs and a phosphor-persistence beam that
+  // tracks the field centroid on screen.
+  useEffect(() => {
+    const canvas = sweepCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let raf = 0;
+    let tick = 0;
+    const render = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Repaint at ~30fps: the sweep is a slow ambient animation, and a
+      // 60fps full-canvas redraw (especially with shadow effects) is a
+      // constant GPU drain that makes the whole page feel sluggish.
+      if (tick % 2 === 0) {
+        ctx.clearRect(0, 0, w, h);
+
+        if (overlays.sweep) {
+          const u = Math.min(window.devicePixelRatio || 1, 2);
+          const map = mapRef.current;
+          let cx = w / 2;
+          let cy = h / 2;
+          if (map) {
+            // Beam pivot follows the field centroid even when the user pans.
+            const p = map.project(MAP_CENTER);
+            cx = p.x * u;
+            cy = p.y * u;
+          }
+          const radius = Math.min(w, h) * 0.44;
+
+          sweepAngleRef.current = (sweepAngleRef.current + 0.056) % (2 * Math.PI);
+          const angle = sweepAngleRef.current;
+
+          // Range rings (25 / 50 / 75 / 100% of sweep radius)
+          ctx.strokeStyle = "rgba(47, 107, 88, 0.13)";
+          ctx.lineWidth = u;
+          for (let r = 0.25; r <= 1.0; r += 0.25) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius * r, 0, 2 * Math.PI);
+            ctx.stroke();
+          }
+
+          // Crosshairs
+          ctx.beginPath();
+          ctx.moveTo(cx - radius, cy);
+          ctx.lineTo(cx + radius, cy);
+          ctx.moveTo(cx, cy - radius);
+          ctx.lineTo(cx, cy + radius);
+          ctx.stroke();
+
+          // Sweeping beam with trailing phosphor persistence
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, radius, angle - 0.4, angle);
+          ctx.closePath();
+          ctx.fillStyle = "rgba(83, 125, 155, 0.13)";
+          ctx.fill();
+
+          // Leading edge bright line (no shadowBlur — a per-frame
+          // shadow is the single most expensive canvas operation)
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+          ctx.strokeStyle = "rgba(40, 116, 95, 0.85)";
+          ctx.lineWidth = 2 * u;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      tick += 1;
+      raf = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => cancelAnimationFrame(raf);
+  }, [overlays.sweep]);
+
   // Keep overlay visibility in sync with the map (incl. after style switches)
   useEffect(() => {
     const map = mapRef.current;
@@ -507,7 +616,15 @@ export function FarmMap({
   return (
     <div className={cn("relative h-full w-full overflow-hidden rounded-xl border border-line bg-[#EDF2EC]", className)}>
       {/* Map canvas */}
-      <div ref={containerRef} className="absolute inset-0" />
+      {/* MapLibre v4 adds .maplibregl-map (position:relative) to this element, so it needs
+          an explicit height — an `absolute inset-0` container would collapse to 0. */}
+      <div ref={containerRef} className="h-full w-full" />
+
+      {/* Animated telemetry sweep overlay */}
+      <canvas
+        ref={sweepCanvasRef}
+        className="pointer-events-none absolute inset-0 z-[4] h-full w-full opacity-90"
+      />
 
       {/* Top Bar: Clean unified GIS control header */}
       <div className="absolute inset-x-3 top-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
@@ -584,6 +701,7 @@ export function FarmMap({
                   {[
                     { key: "zones" as const, label: "Irrigation Zones" },
                     { key: "sensors" as const, label: "Soil Sensors" },
+                    { key: "sweep" as const, label: "Sweep" },
                     { key: "boundary" as const, label: "Field Boundary" },
                   ].map((item) => (
                     <button

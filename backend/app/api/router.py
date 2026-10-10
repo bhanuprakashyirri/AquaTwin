@@ -13,7 +13,7 @@ from app.api.v1 import (
     weather,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["root"])
 api_router = router
 
 # Include v1 domain routers

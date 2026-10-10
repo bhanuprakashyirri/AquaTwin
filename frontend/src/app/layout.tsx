@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/auth-context";
 import { VoiceAgent } from "@/components/agent/VoiceAgent";
 import { ToastProvider } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { RecentActionsProvider } from "@/lib/recent-actions";
 
 /**
  * Typography foundation — identical to QuizCore's font stack.
@@ -55,9 +56,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <FarmProvider>
             <ToastProvider>
-              <LoadingScreen />
-              {children}
-              <VoiceAgent />
+              <RecentActionsProvider>
+                <LoadingScreen />
+                {children}
+                <VoiceAgent />
+              </RecentActionsProvider>
             </ToastProvider>
           </FarmProvider>
         </AuthProvider>

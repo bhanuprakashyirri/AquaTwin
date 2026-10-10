@@ -69,6 +69,7 @@ export async function fetchWeather(fieldId: string) {
       nextRainProbabilityPct: number;
       nextRainInHours: number;
       tempNowC: number;
+      et0Mm?: number;
     } | null;
     error?: string;
   }>(`/api/fields/${fieldId}/weather`);

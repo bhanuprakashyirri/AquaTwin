@@ -21,7 +21,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Panel, PanelHeader, DataBadge } from "@/components/ui/panel";
 import { KpiCard } from "@/components/ui/kpi";
 import { AXIS_STYLE, CHART, ChartTooltip } from "@/components/charts/common";
-import { fetchHistory, fetchSystemStatus, fetchWaterFingerprint, fetchWeather } from "@/services/api";
+import { fetchAnalyticsSummary, fetchHistory, fetchSystemStatus, fetchWaterFingerprint, fetchWeather } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 
 export default function AnalyticsPage() {
@@ -29,6 +29,7 @@ export default function AnalyticsPage() {
   const wxQ = useApiData(() => fetchWeather("field-a"));
   const fpQ = useApiData(() => fetchWaterFingerprint("field-a"));
   const statusQ = useApiData(() => fetchSystemStatus("field-a"));
+  const summaryQ = useApiData(() => fetchAnalyticsSummary("field-a"));
 
   const observations = wxQ.data?.observations ?? [];
   const events = histQ.data?.events ?? [];
@@ -82,6 +83,38 @@ export default function AnalyticsPage() {
   const meanResponse = irrigated.length
     ? irrigated.reduce((s, e) => s + e.moistureResponsePct, 0) / irrigated.length
     : 0;
+
+  // 168h digital-twin moisture prediction from the backend,
+  // bucketed to daily averages for the timeline chart.
+  const predictedDaily = useMemo(() => {
+    const timeline = summaryQ.data?.moistureTimeline ?? [];
+    if (!timeline.length) return [];
+    const buckets = new Map<string, { day: string; sum: number; n: number }>();
+    timeline.forEach((p) => {
+      const d = new Date(p.time);
+      const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const b = buckets.get(key) ?? { day: key, sum: 0, n: 0 };
+      b.sum += p.moisturePct;
+      b.n += 1;
+      buckets.set(key, b);
+    });
+    return Array.from(buckets.values()).map((b) => ({
+      day: b.day,
+      predicted: Math.round((b.sum / b.n) * 10) / 10,
+    }));
+  }, [summaryQ.data]);
+
+  const moistureChart = useMemo(() => {
+    const pred = new Map(predictedDaily.map((p) => [p.day, p.predicted]));
+    const rows = new Map<string, { day: string; moisture: number | null; predicted: number | null }>();
+    daily.forEach((d) => rows.set(d.day, { day: d.day, moisture: d.moisture, predicted: pred.get(d.day) ?? null }));
+    predictedDaily.forEach((p) => {
+      const existing = rows.get(p.day);
+      if (existing) existing.predicted = p.predicted;
+      else rows.set(p.day, { day: p.day, moisture: null, predicted: p.predicted });
+    });
+    return Array.from(rows.values());
+  }, [daily, predictedDaily]);
 
   const radarData = fp && fp.status === "calculated"
     ? [
@@ -156,25 +189,27 @@ export default function AnalyticsPage() {
         <section>
           <h2 className="text-[17px] font-semibold text-ink">Soil moisture timeline</h2>
           <p className="mt-0.5 text-sm text-ink-muted">
-            Observed root-zone moisture progression against hydraulic critical points.
+            Observed root-zone moisture progression against the 7-day digital-twin prediction and hydraulic critical points.
           </p>
           <Panel className="mt-3">
             <div className="p-4">
-              {daily.length ? (
+              {moistureChart.length ? (
                 <div style={{ height: 250 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={daily} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
+                    <LineChart data={moistureChart} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
                       <CartesianGrid stroke={CHART.grid} vertical={false} />
                       <XAxis dataKey="day" {...AXIS_STYLE} />
                       <YAxis domain={[15, 35]} tickFormatter={(v) => `${v}%`} {...AXIS_STYLE} />
                       <ChartTooltip formatter={(v) => `${v}%`} />
-                      <Line dataKey="moisture" name="Root-zone moisture" stroke={CHART.recommended} strokeWidth={2.5} dot={{ r: 3.5 }} />
+                      <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, paddingTop: 4, color: "#60746C" }} />
+                      <Line dataKey="moisture" name="Observed" stroke={CHART.recommended} strokeWidth={2.5} dot={{ r: 3.5 }} connectNulls />
+                      <Line dataKey="predicted" name="Predicted (7-day twin)" stroke={CHART.alternative} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="flex h-[200px] items-center justify-center text-tiny text-ink-muted">
-                  No historical moisture records available yet for this field.
+                  No historical moisture records or twin predictions available yet for this field.
                 </div>
               )}
             </div>

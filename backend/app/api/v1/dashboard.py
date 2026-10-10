@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Query, Body
 
 from app.db.database import (
+    get_app_setting,
     get_farms,
     get_farm,
     get_field,
@@ -80,9 +81,10 @@ def recommendation(field_id: str = "field-a") -> dict:
     lat = field.get("latitude", 16.54)
     lon = field.get("longitude", 81.52)
     crop_kc = field.get("crop", {}).get("cropCoefficient", 1.15)
+    available_water = get_app_setting(f"water_budget_l:{field_id}", 2000.0)
 
     forecast = _weather.get_forecast(lat, lon, 48)
-    sim = run_full_simulation(pct, horizon=48, available_water=2000, forecast=forecast, crop_kc=crop_kc)
+    sim = run_full_simulation(pct, horizon=48, available_water=available_water, forecast=forecast, crop_kc=crop_kc)
 
     best = next((s for s in sim["scenarios"] if s["recommended"]), sim["scenarios"][0])
     saved = max(0.0, 720 - best["waterUsedL"])
@@ -98,22 +100,50 @@ def recommendation(field_id: str = "field-a") -> dict:
         {"label": "Crop stage", "value": field.get("crop", {}).get("growthStage", "Active Vegetative"), "weight": 0.2},
     ]
 
+    from app.core.ml_predictor import get_ml_recommendation
+    ml_pred = get_ml_recommendation(
+        kc=crop_kc,
+        root_depth_mm=600, # default/mock for now
+        field_capacity=0.27,
+        wilting_point=0.13,
+        temperature_c=forecast[0].get("temperatureC", 30) if forecast else 30,
+        reference_et0_mm=forecast[0].get("et0Mm", 5.0) if forecast else 5.0,
+        soil_moisture_prev_pct=pct,
+        rew_prev=0.5, # default
+        rain_forecast_24h_mm=forecast[0].get("rainMm", 0) if forecast else 0,
+        water_deficit_mm=max(0, 0.27*600 - (pct/100)*600)
+    )
+
+    if ml_pred:
+        factors.append({
+            "label": "ML Prediction", 
+            "value": f"{ml_pred['recommended_amount_mm']:.1f} mm" if ml_pred["irrigation_needed"] else "No irrigation needed", 
+            "weight": 0.4
+        })
+
+    is_irrigate = best["key"].startswith("irrigate")
+    if ml_pred and ml_pred["irrigation_needed"]:
+        is_irrigate = True
+        best["label"] = f"Irrigate ~{ml_pred['recommended_amount_mm']:.0f} mm (ML Optimized)"
+
     return {
-        "action": best["label"].upper(),
+        "action": "IRRIGATE" if is_irrigate else "WAIT",
         "headline": best["label"],
         "reason": (
-            "Current root-zone moisture is sufficient for the forecast window and "
-            "precipitation is expected. Deferring irrigation prevents water waste."
-            if best["key"].startswith("wait")
-            else "Root-zone moisture is approaching the refill threshold; irrigating now prevents crop stress."
+            "Machine Learning model predicts optimal time to irrigate based on recent data."
+            if (ml_pred and ml_pred["irrigation_needed"]) else
+            ("Current root-zone moisture is sufficient for the forecast window." if not is_irrigate else "Root-zone moisture is approaching the refill threshold.")
         ),
         "waterSavedL": round(saved, 0),
+        "availableWaterL": round(available_water, 0),
+        "waterUsedL": round(best["waterUsedL"], 0),
         "stressRiskPct": best["stressRiskPct"],
-        "confidencePct": 85 if forecast else 60,
+        "confidencePct": 95 if ml_pred else (85 if forecast else 60),
         "nextEvaluationAt": "in 6 hours",
         "factors": factors,
-        "recommendedKey": sim["recommendedKey"],
+        "recommendedKey": "irrigate_now" if is_irrigate else best["key"],
         "status": "active",
+        "mlPrediction": ml_pred
     }
 
 
@@ -128,4 +158,53 @@ def system_status(field_id: Optional[str] = None) -> dict:
         "satelliteLastSync": None,
         "digitalTwin": "ACTIVE" if sensors else "IDLE",
         "demoMode": False,
+    }
+
+
+@router.get("/prototype-data")
+def get_prototype_data(lat: float = 16.5449, lon: float = 81.5212) -> dict:
+    """Returns aggregated site data: live weather, ML crop insights, water resources."""
+    # 1. Live Weather
+    forecast = _weather.get_forecast(lat, lon, 48)
+    temp_now = forecast[0].get("temperatureC", 0.0) if forecast else 0.0
+    rain_prob = max((f.get("rainProbabilityPct", 0) for f in (forecast[:12] if forecast else [])), default=0)
+    rain_24h = sum(f.get("rainfallMm", 0) for f in (forecast[:24] if forecast else []))
+
+    # 2. Water Resource / Soil (mocked for the selected coords based on typical field-a)
+    pct = 19.5
+    available_budget = 1500  # liters or mm
+
+    # 3. Crop ML Data
+    from app.core.ml_predictor import get_ml_recommendation
+    ml_pred = get_ml_recommendation(
+        kc=1.15,
+        root_depth_mm=600,
+        field_capacity=0.27,
+        wilting_point=0.13,
+        temperature_c=temp_now,
+        reference_et0_mm=forecast[0].get("et0Mm", 5.0) if forecast else 5.0,
+        soil_moisture_prev_pct=pct,
+        rew_prev=0.4,
+        rain_forecast_24h_mm=rain_24h,
+        water_deficit_mm=max(0, 0.27*600 - (pct/100)*600)
+    )
+
+    return {
+        "location": {"lat": lat, "lng": lon},
+        "weather": {
+            "tempNowC": temp_now,
+            "rainProbability12h": rain_prob,
+            "rainExpected24hMm": rain_24h,
+            "source": _weather.source_label
+        },
+        "waterResource": {
+            "soilMoisturePct": pct,
+            "waterBudgetRemainingL": available_budget,
+            "soilType": "Loam"
+        },
+        "cropML": ml_pred or {
+            "irrigation_needed": False,
+            "recommended_amount_mm": 0.0,
+            "note": "ML model unavailable"
+        }
     }

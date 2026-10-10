@@ -22,7 +22,7 @@ import { AGENT_EVENTS, onAgentEvent } from "@/agent/site-bus";
 import { AnimatedValue } from "@/components/ui/animated-value";
 import { useToast } from "@/components/ui/toast";
 import { EASE, fadeUp, staggerContainer } from "@/lib/motion";
-import { fetchSystemStatus, fetchZones, postOptimize } from "@/services/api";
+import { fetchSystemStatus, fetchWaterBudget, fetchZones, postOptimize } from "@/services/api";
 import { useApiData } from "@/hooks/useApiData";
 import { useFarm } from "@/context/farm-context";
 import { fmtL, stressColor } from "@/lib/format";
@@ -51,8 +51,19 @@ export default function WaterBudgetPage() {
     }
   };
 
+  // Load the persisted quota, then optimize with it — never reset to a
+  // hardcoded default on mount, or the user's saved budget would be wiped.
   useEffect(() => {
-    runOptimize(2000, true);
+    let cancelled = false;
+    (async () => {
+      const { data } = await fetchWaterBudget("field-a");
+      const budget = data?.availableWaterL ?? 2000;
+      if (!cancelled) setAvailable(budget);
+      runOptimize(budget, true);
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zonesQ.data]);
 

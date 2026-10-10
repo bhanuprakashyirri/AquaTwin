@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -57,7 +59,37 @@ class OpenMeteoWeatherProvider(WeatherProvider):
     source_label = "Open-Meteo High-Resolution NWP"
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
+    # Forecasts change hourly, so cache successful responses for a short
+    # window. This keeps every endpoint (dashboard, simulation, rain
+    # uncertainty) fast and well under the client timeout even when the
+    # upstream weather API is rate-limiting or slow.
+    _cache: Dict[tuple, tuple] = {}
+    _lock = Lock()
+    CACHE_TTL = 900.0
+    FAIL_TTL = 60.0
+
+    def _cached(self, key: tuple, fetch) -> Optional[List[Dict[str, Any]]]:
+        now = time.time()
+        with self._lock:
+            hit = self._cache.get(key)
+            if hit and hit[0] > now:
+                return hit[1]
+        rows = fetch()
+        # Cache successes for the full TTL; cache failures briefly so a
+        # rate-limited or unreachable upstream doesn't add multi-second
+        # latency to every request during an outage.
+        ttl = self.CACHE_TTL if rows is not None else self.FAIL_TTL
+        with self._lock:
+            self._cache[key] = (now + ttl, rows)
+        return rows
+
     def get_forecast(self, lat: float, lon: float, hours: int = 48) -> Optional[List[Dict[str, Any]]]:
+        return self._cached(
+            ("forecast", round(lat, 3), round(lon, 3), hours),
+            lambda: self._fetch_forecast(lat, lon, hours),
+        )
+
+    def _fetch_forecast(self, lat: float, lon: float, hours: int = 48) -> Optional[List[Dict[str, Any]]]:
         try:
             params = {
                 "latitude": lat,
@@ -101,6 +133,12 @@ class OpenMeteoWeatherProvider(WeatherProvider):
             return None
 
     def get_observations(self, lat: float, lon: float, days: int = 7) -> Optional[List[Dict[str, Any]]]:
+        return self._cached(
+            ("observations", round(lat, 3), round(lon, 3), days),
+            lambda: self._fetch_observations(lat, lon, days),
+        )
+
+    def _fetch_observations(self, lat: float, lon: float, days: int = 7) -> Optional[List[Dict[str, Any]]]:
         try:
             params = {
                 "latitude": lat,

@@ -2,10 +2,12 @@
 
 from fastapi import APIRouter
 from app.db.database import (
+    get_app_setting,
     get_field,
     get_field_state,
     get_zones,
     get_irrigation_history,
+    set_app_setting,
 )
 from app.services.adapters import OpenMeteoWeatherProvider
 from app.services.twin import (
@@ -18,11 +20,20 @@ router = APIRouter(tags=["irrigation"])
 _weather = OpenMeteoWeatherProvider()
 
 
+@router.get("/water-budget")
+def water_budget(field_id: str = "field-a") -> dict:
+    """Return the persisted water budget for a field."""
+    return {"availableWaterL": get_app_setting(f"water_budget_l:{field_id}", 2000.0)}
+
+
 @router.post("/water-budget/optimize")
 def water_budget_optimize(body: dict) -> dict:
     available = float(body.get("availableWaterL", 2000))
     field_id = body.get("fieldId", "field-a")
     supplied_zones = body.get("zones")
+
+    # Persist the configured quota so the dashboard and this page share it.
+    set_app_setting(f"water_budget_l:{field_id}", available)
 
     zones = supplied_zones if supplied_zones is not None else get_zones(field_id)
     return optimize_water(zones, available)

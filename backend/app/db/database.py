@@ -146,6 +146,17 @@ def init_db(seed_test_fixtures: bool = False) -> None:
             )
         """)
 
+        # Key-value store for per-field settings such as the configured
+        # water budget, so the dashboard and Water Budget page share one
+        # persisted value instead of independent hardcoded defaults.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value REAL NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+
         # Clean demo data out of production runtime
         is_testing = seed_test_fixtures or ("unittest" in sys.modules and os.getenv("AQUATWIN_NO_TEST_SEED") != "1")
         if not is_testing:
@@ -580,4 +591,23 @@ def update_field_state(field_id: str, state: Dict[str, Any]) -> None:
             state["stressRiskPct"],
             now_str,
         ))
+        conn.commit()
+
+
+def get_app_setting(key: str, default: float) -> float:
+    """Read a persisted numeric setting, falling back to the default."""
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+        return float(row["value"]) if row else default
+
+
+def set_app_setting(key: str, value: float) -> None:
+    """Persist a numeric setting (upsert)."""
+    now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    with get_db_connection() as conn:
+        conn.execute(
+            "INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+            (key, float(value), now_str),
+        )
         conn.commit()
